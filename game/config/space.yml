@@ -1,0 +1,132 @@
+space:
+
+  # ---------------------------------------------------------------------
+  # Geometry
+  # ---------------------------------------------------------------------
+  # Geometry is a property of each SECTOR (chosen at creation); this is
+  # just the default for new sectors. It cannot be a per-view toggle:
+  # distance, facing and firing arcs are all computed from it, so a sector
+  # rendered as squares in telnet and hexes on the web would be two
+  # different games. Both renderers draw whatever the sector actually uses.
+  #
+  #   square - 8 facings (N/NE/E/SE/S/SW/W/NW), Chebyshev distance
+  #   hex    - 6 facings (NE/E/SE/SW/W/NW), axial coordinates
+  default_geometry: square
+
+  # Square geometry only. Where the diagonal directions fall when splitting
+  # 8 facings into 4 arcs:
+  #   forward   - wide bow/stern arcs (good for fixed-gun fighters)
+  #   broadside - wide port/starboard arcs (good for capital broadsides)
+  arc_diagonal_bias: forward
+
+  # ---------------------------------------------------------------------
+  # Resolution model
+  # ---------------------------------------------------------------------
+  # banked     - pilot rolls once per round, successes defend against every
+  #              attack that round (POC default: one pilot action per round)
+  # per_attack - pilot rolls fresh against each incoming attack (not yet
+  #              implemented; the resolver dispatches on this key)
+  evade_model: banked
+
+  # false - GM runs space/resolve
+  # true  - the round resolves as soon as every crewed ship has orders
+  auto_resolve: false
+
+  # Net successes (attack successes minus target's evade margin) needed to hit.
+  hit_threshold: 1
+
+  # Dice rolled when a station's skill is unset, unknown to FS3, or the
+  # station is crewed by an unskilled hand.
+  untrained_dice: 2
+
+  # ---------------------------------------------------------------------
+  # Silhouette (size class)
+  # ---------------------------------------------------------------------
+  # To-hit modifier is (target silhouette - attacker silhouette), clamped
+  # to +/- this value. Big targets are easy; small ones are hard.
+  silhouette_tohit_clamp: 3
+
+  scale_rules:
+    # Fighter-scale weapons do full damage up to this silhouette.
+    fighter_weapon_full_damage_max_silhouette: 5
+    # ...and against anything larger:
+    #   systems_only - can damage sections/systems but never core hull
+    #   reduced      - full damage pool multiplied by the value below
+    fighter_weapon_vs_larger: systems_only
+    fighter_weapon_reduced_multiplier: 0.5
+    # Capital-scale weapons track poorly against small, nimble targets.
+    capital_weapon_min_silhouette: 5
+    capital_weapon_small_target_penalty: -3
+
+  # ---------------------------------------------------------------------
+  # Range
+  # ---------------------------------------------------------------------
+  range_mods:
+    point_blank: 1      # within half the weapon's range
+    normal: 0           # within the weapon's range
+    # Beyond a weapon's range it simply cannot fire.
+
+  # ---------------------------------------------------------------------
+  # Stations -> FS3 abilities
+  # ---------------------------------------------------------------------
+  # Change these to whatever this game's FS3 skill list actually contains.
+  # An ability FS3 doesn't know falls back to untrained_dice.
+  station_skills:
+    pilot: Piloting
+    helm: Piloting
+    gunnery: Gunnery
+    engineering: Engineering
+    sensors: Sensors
+    flight_ops: Leadership
+
+  # ---------------------------------------------------------------------
+  # Sensors
+  # ---------------------------------------------------------------------
+  sensors:
+    # Contacts inside this range are detected automatically each round.
+    passive_range: 6
+    # An active sweep (Sensors roll) can resolve contacts out to here.
+    active_range: 12
+
+  # ---------------------------------------------------------------------
+  # Damage
+  # ---------------------------------------------------------------------
+  damage:
+    # A section whose hull hits 0 knocks out the systems mounted in it.
+    # A ship is destroyed when this fraction of its total hull is gone.
+    destruction_hull_fraction: 1.0
+    # Shields regenerate this much per round when not fired upon.
+    shield_regen: 1
+
+  # ---------------------------------------------------------------------
+  # Terrain
+  # ---------------------------------------------------------------------
+  # sensor_mod  - dice modifier when detecting something inside it
+  # targeting_mod - dice modifier when shooting into or out of it
+  # symbol      - how it draws on the ASCII tactical display
+  terrain_types:
+    asteroid_field:
+      label: Asteroid Field
+      symbol: "*"
+      sensor_mod: -2
+      targeting_mod: -1
+    debris:
+      label: Debris
+      symbol: ":"
+      sensor_mod: -1
+      targeting_mod: -1
+    wreck:
+      label: Wreck
+      symbol: "#"
+      sensor_mod: -1
+      targeting_mod: 0
+    resource_zone:
+      label: Resource Zone
+      symbol: "%"
+      sensor_mod: 0
+      targeting_mod: 0
+    dust:
+      label: Dust Cloud
+      symbol: "~"
+      sensor_mod: -3
+      targeting_mod: -2

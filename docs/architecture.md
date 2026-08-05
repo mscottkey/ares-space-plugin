@@ -227,17 +227,62 @@ thread (ticks must be cheap), errors must rescue-and-re-arm. Decision point
 comes after the POC proves the resolution engine; the tick would then just
 call the same resolve step on a clock instead of on command.
 
-## 10. Open questions for review
+## 10. Decisions taken (were open questions)
 
-1. **Eight-way square grid vs hex** — square+8 proposed for POC (simpler
-   ASCII, matches universalmap's rendering approach). Hex is prettier for
-   facing math but harder to render in telnet.
-2. **Evade-margin model** — pilot banks successes as this round's defense
-   vs re-rolling defense per attack. Banked proposed (fewer rolls, one
-   pilot action per round).
-3. **Auto-resolve trigger** — resolve automatically when all ships have
-   orders, or GM-only `space/resolve`? GM-only proposed for POC.
-4. **Sensors as its own station/skill** vs folding into helm — depends on
-   the game's FS3 skill list; config makes both possible, but the default
-   matters.
-5. **Fighter shields** — single pool proposed (vs per-arc like capitals).
+All five resolved; the POC is built on these.
+
+1. **Geometry: both, per sector.** `square` (8 facings, Chebyshev
+   distance) and `hex` (6 facings, axial coordinates) are implemented
+   behind one `Geometry` interface and chosen when the sector is created,
+   defaulting from `space.yml`.
+
+   One correction to the original framing: geometry cannot be a
+   *rendering* toggle — square in telnet, hex on the web. Distance,
+   facing, turn cost and firing arcs are all computed from it, so the two
+   would be different games on the same data. It is a property of the
+   sector; both renderers draw whatever that sector actually uses. A game
+   can run hex sectors and square sectors side by side.
+
+2. **Evasion: banked.** The pilot rolls Piloting once per round and banks
+   the successes as defense against every incoming shot. `evade_model` in
+   `space.yml` dispatches this, with `per_attack` reserved for later.
+
+3. **Resolution: GM-triggered, but not hard-wired.** `space/resolve` is a
+   thin command over `Resolver.resolve_round(combat)`. Auto-resolve is
+   already scaffolded (`auto_resolve` in config,
+   `Engagements.ready_to_resolve?`), and a scheduled tick would call the
+   same function — so moving off GM-only is a small change, not a rewrite.
+
+4. **Stations map to FS3 abilities in YAML.** `station_skills` maps each
+   station to an ability. Anything FS3 doesn't define falls back to a
+   configurable flat pool (`untrained_dice`, default 2) rather than
+   letting FS3 quietly treat an unknown ability as a 1-die background
+   roll. `check_config` reports such mismatches at startup.
+
+5. **Fighter shields: a single pool.** Small craft carry one section
+   named `hull` — one bubble over the whole ship. Capitals carry one
+   section per arc. Both run through identical code paths, so there is no
+   special-casing for small craft anywhere in the resolver.
+
+## 11. What the POC actually implements
+
+Built and covered by 92 passing specs (`rspec` at the repo root):
+
+- Sectors, ships, terrain and engagements as Ohm models.
+- Square and hex geometry, facing, turn cost limited by agility, arcs.
+- Silhouette to-hit and damage-scale gating.
+- Sections, shields, hull, system knockouts, destruction.
+- Per-ship sensor contacts with identification falloff and terrain
+  concealment.
+- Order commands, the round resolver, and an ASCII tactical console.
+- Web request handlers ready for the Ember page.
+
+`tools/demo.rb` runs a scripted engagement and prints the console and
+round report with no game server, for tuning by eye.
+
+## 12. Still to do
+
+- The Ember tactical page (§8) — handlers exist, the portal files don't.
+- Carrier operations: launching and recovering fighters from the
+  Covenant's flight deck (`carrier` reference exists on the model).
+- Pseudo-real-time tick (§9), after the POC has been played.

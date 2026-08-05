@@ -1,0 +1,44 @@
+space:
+  weapons:
+
+    # scale:  fighter | capital  (drives silhouette damage gating)
+    # damage: base damage pool on a hit
+    # range:  maximum range in squares/hexes
+
+    Light Cannon:
+      scale: fighter
+      damage: 3
+      range: 3
+      description: Rapid-fire energy cannon, standard fighter armament.
+
+    Seeker:
+      scale: fighter
+      damage: 5
+      range: 5
+      ammo: 4
+      description: Guided missile. Limited magazine, hits hard for its scale.
+
+    Point Defense:
+      scale: fighter
+      damage: 2
+      range: 2
+      description: Anti-fighter turret. Tracks small targets well.
+
+    Heavy Battery:
+      scale: capital
+      damage: 8
+      range: 8
+      description: Capital-scale main gun. Devastating, but slow to track.
+
+    Torpedo:
+      scale: capital
+      damage: 12
+      range: 6
+      ammo: 6
+      description: Ship-killer ordnance. Slow, limited, and section-wrecking.
+
+    Swarm Spines:
+      scale: fighter
+      damage: 3
+      range: 2
+      description: Organic spines flung by swarm craft at close range.

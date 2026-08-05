@@ -1,0 +1,8 @@
+name: space
+version: 0.1
+author: mscottkey
+description: >
+  Space and space-combat system for AresMUSH. Persistent tactical sectors
+  queried as a sensor console, ships with size classes, facing, firing arcs
+  and sections, and turn-based combat that resolves every crew action
+  through core FS3 skill rolls.

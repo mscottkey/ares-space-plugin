@@ -1,0 +1,2 @@
+--require ./plugin/specs/spec_helper
+--pattern plugin/specs/**/*_specs.rb

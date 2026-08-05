@@ -1,0 +1,148 @@
+space:
+  ship_classes:
+
+    # -------------------------------------------------------------------
+    # Every ship has `sections`. Small craft have exactly one section
+    # named "hull" - that is the single shield bubble. Capitals have
+    # named sections that map to firing arcs, each with its own shields,
+    # hull and mounted systems.
+    #
+    # silhouette: size class. 3 fighter, 4 shuttle, 5 gunboat,
+    #             6 frigate, 7 cruiser, 8 capital.
+    # speed:      squares/hexes of movement per round.
+    # agility:    facing changes allowed per move, and the pilot's
+    #             bonus dice when evading.
+    # -------------------------------------------------------------------
+
+    Talon:
+      description: UCC light interceptor. Fast, fragile, forward guns.
+      silhouette: 3
+      speed: 4
+      agility: 2
+      stations: [ pilot ]
+      sections:
+        hull: { shields: 6, hull: 4 }
+      hardpoints:
+        - { arc: forward, weapon: Light Cannon }
+        - { arc: forward, weapon: Seeker }
+
+    Longbow:
+      description: UCC strike fighter. Slower, tougher, carries ordnance.
+      silhouette: 4
+      speed: 3
+      agility: 1
+      stations: [ pilot, gunnery ]
+      sections:
+        hull: { shields: 8, hull: 6 }
+      hardpoints:
+        - { arc: forward, weapon: Light Cannon }
+        - { arc: forward, weapon: Torpedo }
+        - { arc: aft, weapon: Point Defense }
+
+    Cutter:
+      description: Armed shuttle. Hauls crew and cargo, defends itself poorly.
+      silhouette: 4
+      speed: 2
+      agility: 1
+      stations: [ pilot, gunnery ]
+      sections:
+        hull: { shields: 6, hull: 8 }
+      hardpoints:
+        - { arc: forward, weapon: Light Cannon }
+
+    Covenant:
+      description: UCC Covenant. Colony ship, flight deck, capital combatant.
+      silhouette: 8
+      speed: 1
+      agility: 0
+      stations: [ helm, gunnery, engineering, sensors, flight_ops ]
+      sections:
+        fore:
+          shields: 10
+          hull: 12
+          systems: [ sensors, weapons ]
+        aft:
+          shields: 8
+          hull: 12
+          systems: [ engines, weapons ]
+        port:
+          shields: 8
+          hull: 10
+          systems: [ flight_deck ]
+        starboard:
+          shields: 8
+          hull: 10
+          systems: [ weapons ]
+      hardpoints:
+        - { arc: forward, weapon: Heavy Battery }
+        - { arc: forward, weapon: Point Defense }
+        - { arc: port, weapon: Heavy Battery }
+        - { arc: port, weapon: Point Defense }
+        - { arc: starboard, weapon: Heavy Battery }
+        - { arc: starboard, weapon: Point Defense }
+        - { arc: aft, weapon: Point Defense }
+
+    Concord:
+      description: Wreck of the UCC Concord. Derelict, but its guns may yet wake.
+      silhouette: 8
+      speed: 0
+      agility: 0
+      stations: [ gunnery ]
+      sections:
+        fore:
+          shields: 0
+          hull: 6
+          systems: [ weapons ]
+        aft:
+          shields: 0
+          hull: 4
+          systems: []
+        port:
+          shields: 0
+          hull: 4
+          systems: []
+        starboard:
+          shields: 0
+          hull: 4
+          systems: []
+      hardpoints:
+        - { arc: forward, weapon: Heavy Battery }
+
+    Swarm Mote:
+      description: Single swarm organism. Trivial alone, lethal in numbers.
+      silhouette: 3
+      speed: 4
+      agility: 2
+      stations: [ pilot ]
+      sections:
+        hull: { shields: 0, hull: 3 }
+      hardpoints:
+        - { arc: forward, weapon: Swarm Spines }
+
+    Swarm Maw:
+      description: Grown swarm hulk. Capital-scale mass of devouring biology.
+      silhouette: 7
+      speed: 2
+      agility: 1
+      stations: [ helm, gunnery ]
+      sections:
+        fore:
+          shields: 0
+          hull: 14
+          systems: [ weapons ]
+        aft:
+          shields: 0
+          hull: 10
+          systems: [ engines ]
+        port:
+          shields: 0
+          hull: 10
+          systems: []
+        starboard:
+          shields: 0
+          hull: 10
+          systems: []
+      hardpoints:
+        - { arc: forward, weapon: Heavy Battery }
+        - { arc: port, weapon: Swarm Spines }
+        - { arc: starboard, weapon: Swarm Spines }
