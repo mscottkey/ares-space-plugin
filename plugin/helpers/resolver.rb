@@ -99,11 +99,11 @@ module AresMUSH
           speed = [ order["speed"].to_i, effective_max_speed(ship) ].min
           speed = [ speed, 0 ].max
 
-          destination = Geometry.translate(geometry, from, new_facing, speed)
-          destination = Ships.clamp_to_sector(sector, destination)
+          destination, blocked = advance(sector, geometry, ships, ship, from, new_facing, speed)
 
           Ships.place(ship, destination[0], destination[1], new_facing)
-          ship.update(speed: speed)
+          travelled = Geometry.distance(geometry, from, destination)
+          ship.update(speed: travelled)
 
           report[:moves] << {
             ship: ship.name,
@@ -112,8 +112,9 @@ module AresMUSH
             facing: Geometry.facing_name(geometry, new_facing),
             requested_facing: Geometry.facing_name(geometry, requested),
             turn_limited: new_facing != requested,
-            speed: speed,
-            speed_limited: speed < order["speed"].to_i
+            speed: travelled,
+            speed_limited: speed < order["speed"].to_i,
+            blocked: blocked
           }
         end
       end
@@ -163,8 +164,13 @@ module AresMUSH
                             range: weapon["range"], distance: distance) }
         end
 
+        # Movement stops ships stacking, but a GM can place two in one
+        # cell. Co-located there is no bearing, so rather than deadlock
+        # the fight, treat point-blank contact as bearing on everything.
         firing_arc = Geometry.arc(geometry, ship.pos, ship.facing, target.pos, bias)
-        if firing_arc.nil? || "#{firing_arc}" != "#{hp['arc']}"
+        firing_arc = hp["arc"].to_s.to_sym if firing_arc.nil?
+
+        if "#{firing_arc}" != "#{hp['arc']}"
           return { attacker: ship.name, target: target.name, weapon: weapon_name,
                    error: t('space.wrong_arc', arc: hp["arc"], actual: firing_arc || "none") }
         end
@@ -277,6 +283,42 @@ module AresMUSH
       # ---------------------------------------------------------------
       # Helpers
       # ---------------------------------------------------------------
+
+      # Walks the ship forward a cell at a time, stopping short of the
+      # sector edge and of anything already sitting in a cell.
+      #
+      # Without this, ships stack. Fly onto a target and the two share a
+      # position, which leaves no bearing between them - so no hardpoint
+      # can bear and the fight deadlocks. Closing to contact is the first
+      # thing a pilot tries, so it gets handled here rather than papered
+      # over at the firing step.
+      #
+      # Returns [ destination, blocked? ].
+      def self.advance(sector, geometry, ships, ship, from, facing, speed)
+        occupied = ships.reject { |s| s.id == ship.id || !s.active? }
+                        .map { |s| s.pos }
+
+        position = from
+        blocked = false
+
+        speed.to_i.times do
+          step = Geometry.translate(geometry, position, facing, 1)
+
+          if Ships.clamp_to_sector(sector, step) != step
+            blocked = true
+            break
+          end
+
+          if occupied.include?(step)
+            blocked = true
+            break
+          end
+
+          position = step
+        end
+
+        [ position, blocked ]
+      end
 
       # A ship can only swing its nose so far in a round; ask for more and
       # it turns as far as it can toward the heading you wanted.

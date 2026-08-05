@@ -76,6 +76,7 @@ en:
     report_move: "  %{ship}: comes to %{facing}, speed %{speed}, now at %{x},%{y}."
     turn_limited: "(turn limited)"
     speed_limited: "(speed limited)"
+    move_blocked: "(blocked - stopped short)"
     report_miss: "  %{attacker}'s %{weapon} misses %{target}. (%{successes} vs evade %{evade})"
     report_hit: "  %{attacker}'s %{weapon} HITS %{target} for %{damage} on the %{section}."
     systems_only_note: "(scale-limited: systems damage only)"

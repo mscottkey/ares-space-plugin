@@ -3,10 +3,12 @@
 Space and space-combat system for [AresMUSH](https://aresmush.com), built for
 the UCC Covenant game but written as a general-purpose plugin.
 
-**Status: tactical-tabletop POC plus a web portal page, untested on a
-live game.** The rules engine, commands, ASCII console, Ember portal page
-and config are written and covered by 121 passing specs, but nothing has
-run against a real AresMUSH server or portal build yet.
+**Status: tactical-tabletop POC plus a web portal page. Verified on a
+real AresMUSH server; the Ember page is not yet built.** 125 specs pass,
+and every command and web handler has been exercised against a live
+instance with Redis (see [docs/dev-server.md](docs/dev-server.md)). The
+portal files are syntax-checked but no `ember build` has run against
+them.
 See [docs/architecture.md](docs/architecture.md) for the design and
 [docs/install.md](docs/install.md) to try it.
 
@@ -49,12 +51,13 @@ cp game/config/space*.yml /path/to/aresmush/game/config/
 
 Restart, then `manage/checkconfig` to catch station skills your game's
 FS3 doesn't define. Full steps and a smoke test in
-[docs/install.md](docs/install.md).
+[docs/install.md](docs/install.md); to spin up a throwaway Ares instance
+to test against, see [docs/dev-server.md](docs/dev-server.md).
 
 To see it work without a server:
 
 ```
-rspec              # 92 specs, no Redis or game required
+rspec              # 125 specs, no Redis or game required
 ruby tools/demo.rb # prints a scripted engagement's console and report
 ```
 
@@ -77,7 +80,7 @@ plugin/
   commands/           22 player and GM commands
   templates/          ERB for the console and ship status
   web/                request handlers (tactical, sectors, ship, order, resolve)
-  specs/              121 specs + in-memory harness
+  specs/              125 specs + in-memory harness
 game/config/          space.yml, space_ships.yml, space_weapons.yml
 webportal/
   app/routes/         space-sectors, space-tactical

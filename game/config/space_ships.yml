@@ -16,6 +16,7 @@ space:
 
     Talon:
       description: UCC light interceptor. Fast, fragile, forward guns.
+      faction: UCC
       silhouette: 3
       speed: 4
       agility: 2
@@ -28,6 +29,7 @@ space:
 
     Longbow:
       description: UCC strike fighter. Slower, tougher, carries ordnance.
+      faction: UCC
       silhouette: 4
       speed: 3
       agility: 1
@@ -41,6 +43,7 @@ space:
 
     Cutter:
       description: Armed shuttle. Hauls crew and cargo, defends itself poorly.
+      faction: UCC
       silhouette: 4
       speed: 2
       agility: 1
@@ -52,6 +55,7 @@ space:
 
     Covenant:
       description: UCC Covenant. Colony ship, flight deck, capital combatant.
+      faction: UCC
       silhouette: 8
       speed: 1
       agility: 0
@@ -84,6 +88,7 @@ space:
 
     Concord:
       description: Wreck of the UCC Concord. Derelict, but its guns may yet wake.
+      faction: Derelict
       silhouette: 8
       speed: 0
       agility: 0
@@ -110,6 +115,7 @@ space:
 
     Swarm Mote:
       description: Single swarm organism. Trivial alone, lethal in numbers.
+      faction: Swarm
       silhouette: 3
       speed: 4
       agility: 2
@@ -121,6 +127,7 @@ space:
 
     Swarm Maw:
       description: Grown swarm hulk. Capital-scale mass of devouring biology.
+      faction: Swarm
       silhouette: 7
       speed: 2
       agility: 1

@@ -78,6 +78,57 @@ module AresMUSH
           expect(talon.pos[1]).to eq 0
         end
 
+        # Found by running the plugin on a live game: a pilot closing to
+        # contact flew onto the target's square. Co-located, there is no
+        # bearing between them, so no hardpoint could bear and the fight
+        # deadlocked - reachable in one move by anyone who charges.
+        it "stops short of an occupied cell instead of stacking" do
+          talon = spawn("Talon One", "Talon", x: 5, y: 5, facing: 4)
+          spawn("Mote", "Swarm Mote", x: 5, y: 7, facing: 0)
+
+          Orders.set_move(talon, 4, 4)      # would run straight through
+          report = Resolver.resolve_round(combat)
+
+          expect(talon.pos).to eq [ 5, 6 ]  # stopped one short
+          expect(report[:moves].first[:blocked]).to be true
+        end
+
+        it "will not pass through a ship to reach open space beyond it" do
+          talon = spawn("Talon One", "Talon", x: 5, y: 5, facing: 4)
+          spawn("Mote", "Swarm Mote", x: 5, y: 6, facing: 0)
+
+          Orders.set_move(talon, 4, 4)
+          Resolver.resolve_round(combat)
+
+          expect(talon.pos).to eq [ 5, 5 ]  # blocked immediately
+        end
+
+        it "records the distance actually travelled as its speed" do
+          talon = spawn("Talon One", "Talon", x: 5, y: 5, facing: 4)
+          spawn("Mote", "Swarm Mote", x: 5, y: 7, facing: 0)
+
+          Orders.set_move(talon, 4, 4)
+          Resolver.resolve_round(combat)
+
+          expect(talon.speed).to eq 1       # not the 4 it was ordered
+        end
+
+        it "still bears on a target sharing its cell rather than deadlocking" do
+          # A GM can place two ships in one cell even though movement
+          # won't; combat must not become impossible when they do.
+          attacker = spawn("Talon One", "Talon", x: 5, y: 5, facing: 0)
+          target = spawn("Mote", "Swarm Mote", x: 5, y: 5, facing: 0)
+
+          Orders.add_fire(attacker, "Mote", 0)
+          script(4)
+
+          report = Resolver.resolve_round(combat)
+
+          expect(report[:attacks].first[:error]).to be_nil
+          expect(report[:attacks].first[:hit]).to be true
+          expect(target.sections["hull"]["hull"]).to be < 3
+        end
+
         it "will not move a capital whose engines are gone" do
           covenant = spawn("Covenant", "Covenant", x: 10, y: 10, facing: 0)
           sections = covenant.sections
@@ -181,17 +232,19 @@ module AresMUSH
         end
 
         it "checks arcs against where ships end up, not where they started" do
-          # The target starts in the attacker's forward arc but runs past
-          # it; by the time guns speak, the shot no longer bears.
+          # The target starts dead ahead of the attacker but slides off to
+          # its starboard beam; by the time guns speak, the forward mount
+          # no longer bears.
           attacker = spawn("Talon One", "Talon", x: 5, y: 10, facing: 0)
-          runner = spawn("Talon Two", "Talon", x: 5, y: 8, facing: 4)
+          runner = spawn("Talon Two", "Talon", x: 5, y: 8, facing: 3)
 
           Orders.add_fire(attacker, "Talon Two", 0)
-          Orders.set_move(runner, 4, 4)    # sprints south, behind the attacker
+          Orders.set_move(runner, 3, 3)    # SE, ending abeam at 8,11
           script(5)
 
           report = Resolver.resolve_round(combat)
 
+          expect(runner.pos).to eq [ 8, 11 ]
           expect(report[:attacks].first[:error]).to include "wrong_arc"
         end
 
@@ -342,7 +395,7 @@ module AresMUSH
 
           expect(covenant.sections["aft"]["hull"]).to eq 7
           expect(report[:engineering].first[:repaired]).to eq 3
-          expect(FS3Skills.roll_log.first[:ability]).to eq "Engineering"
+          expect(FS3Skills.roll_log.first[:ability]).to eq "Technician"
         end
 
         it "never repairs past the section's maximum" do
@@ -371,7 +424,7 @@ module AresMUSH
           report = Resolver.resolve_round(combat)
 
           expect(report[:sweeps].first[:range]).to eq 10   # passive 6 + 4
-          expect(FS3Skills.roll_log.first[:ability]).to eq "Sensors"
+          expect(FS3Skills.roll_log.first[:ability]).to eq "Alertness"
         end
 
         it "clears the sweep once the round is over" do

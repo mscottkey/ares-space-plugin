@@ -300,7 +300,42 @@ Built and covered by 121 passing specs (`rspec` at the repo root):
 `tools/demo.rb` runs a scripted engagement and prints the console and
 round report with no game server, for tuning by eye.
 
-## 12. Still to do
+## 12. Found by running it on a real game
+
+The plugin was installed on a live AresMUSH instance (Redis, real Ohm
+models, real command dispatch). Five things broke that no amount of
+spec-writing against doubles had caught:
+
+1. **Ships stacked, and stacking deadlocked combat.** A pilot closing to
+   contact flew onto the target's square. Co-located there is no bearing
+   between two ships, so no hardpoint could bear and the fight simply
+   stopped - reachable in one move by anyone who charges. Movement now
+   walks cell by cell and stops short of an occupied one; a co-located
+   pair (which a GM can still create by hand) is treated as bearing on
+   everything rather than deadlocking.
+2. **`Ohm::IndexNotFound` on deleting a sector.** Ohm derives a
+   collection's foreign key from the declaring class, so
+   `collection :ships, "AresMUSH::SpaceShip"` looked for
+   `space_sector_id` while the reference wrote `sector_id`. The third
+   argument (`:sector`) is load-bearing. This is the same indexing trap
+   the universalmap plugin fought with.
+3. **Default station skills didn't exist.** Stock FS3 has no
+   Engineering, Sensors or Leadership - it has Technician, Alertness and
+   Composure. The `check_config` hook reported all three at boot, which
+   is exactly what it was written for, but the shipped defaults should
+   work on a stock game and now do.
+4. **Pending orders displayed a raw facing index** - "come to heading 4"
+   instead of "come to heading S", because the stored order keeps the
+   integer and the renderer wasn't given the geometry to name it.
+5. **A failed sensor sweep reported "sensors out to 0"**, which reads as
+   though the array had failed, when passive range was intact. It now
+   reports effective detection range.
+
+Ship classes also gained a default `faction`, so a spawned hull reads as
+UCC or Swarm on the plot instead of "Unknown" sitting confusingly next
+to genuinely unidentified contacts.
+
+## 13. Still to do
 
 - Carrier operations: launching and recovering fighters from the
   Covenant's flight deck (`carrier` reference exists on the model).

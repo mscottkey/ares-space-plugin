@@ -99,7 +99,10 @@ module AresMUSH
           ship.update(sweep_range: gained)
         end
 
-        roll.merge(range: ship.sweep_range.to_i, station: station, modifier: mod)
+        # Report the reach the crew actually has, not the raw sweep bonus:
+        # a failed sweep leaves passive range intact, and saying "sensors
+        # out to 0" would read as though the array had gone dark.
+        roll.merge(range: detection_range(ship), station: station, modifier: mod)
       end
 
       def self.clear_sweeps(ships)

@@ -14,7 +14,7 @@ module AresMUSH
         lines = [ t('space.orders_header', ship: ship.name) ]
 
         helm = Orders.get(ship, "helm")
-        lines << "  helm:    #{Display.describe_order(helm)}" if helm
+        lines << "  helm:    #{Display.describe_order(helm, ship.geometry)}" if helm
 
         Orders.fire_orders(ship).each do |order|
           hp = Ships.hardpoint(ship, order["hardpoint"])
@@ -23,10 +23,10 @@ module AresMUSH
         end
 
         eng = Orders.get(ship, "engineering")
-        lines << "  engine:  #{Display.describe_order(eng)}" if eng
+        lines << "  engine:  #{Display.describe_order(eng, ship.geometry)}" if eng
 
         sensors = Orders.get(ship, "sensors")
-        lines << "  sensors: #{Display.describe_order(sensors)}" if sensors
+        lines << "  sensors: #{Display.describe_order(sensors, ship.geometry)}" if sensors
 
         client.emit lines.join("\n")
       end

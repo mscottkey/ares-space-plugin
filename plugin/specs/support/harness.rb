@@ -92,7 +92,7 @@ module AresMUSH
       end
 
       def get_ability_type(ability)
-        %w(Piloting Gunnery Engineering Sensors Leadership).include?("#{ability}") ? :action : :background
+        %w(Alertness Athletics Composure Demolitions Firearms Gunnery Medicine Melee Piloting Stealth Technician).include?("#{ability}") ? :action : :background
       end
     end
   end

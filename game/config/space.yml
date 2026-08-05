@@ -69,15 +69,18 @@ space:
   # ---------------------------------------------------------------------
   # Stations -> FS3 abilities
   # ---------------------------------------------------------------------
-  # Change these to whatever this game's FS3 skill list actually contains.
-  # An ability FS3 doesn't know falls back to untrained_dice.
+  # These default to skills that ship with stock FS3, so the plugin works
+  # out of the box. Change them to whatever this game's skill list
+  # actually contains. An ability FS3 doesn't know falls back to
+  # untrained_dice - run `manage/checkconfig` and this plugin will name
+  # any station that would.
   station_skills:
     pilot: Piloting
     helm: Piloting
     gunnery: Gunnery
-    engineering: Engineering
-    sensors: Sensors
-    flight_ops: Leadership
+    engineering: Technician
+    sensors: Alertness
+    flight_ops: Composure
 
   # ---------------------------------------------------------------------
   # Sensors

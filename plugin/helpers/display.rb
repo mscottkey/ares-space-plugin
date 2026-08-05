@@ -147,16 +147,21 @@ module AresMUSH
         return "  #{t('space.no_stations')}" if stations.empty?
 
         stations.map do |s|
-          order = s[:order] ? describe_order(s[:order]) : t('space.no_orders')
+          order = s[:order] ? describe_order(s[:order], ship.geometry) : t('space.no_orders')
           "  %xh#{s[:station].to_s.ljust(12)}%xn #{s[:crew].to_s.ljust(20)} " \
           "#{s[:skill].to_s.ljust(14)} #{order}"
         end.join("\n")
       end
 
-      def self.describe_order(order)
+      # geometry is needed to name the stored facing index; without it a
+      # pending order reads as "come to heading 4" instead of "S".
+      def self.describe_order(order, geometry = "square")
         return "" if !order
         case order["action"]
-        when "move" then t('space.order_move', heading: order["heading"], speed: order["speed"])
+        when "move"
+          t('space.order_move',
+            heading: Geometry.facing_name(geometry, order["heading"]),
+            speed: order["speed"])
         when "evade" then t('space.order_evade')
         when "hold" then t('space.order_hold')
         when "repair" then t('space.order_repair', section: order["section"])
@@ -184,6 +189,7 @@ module AresMUSH
                    speed: m[:speed], x: m[:to][0], y: m[:to][1])
           line += " #{t('space.turn_limited')}" if m[:turn_limited]
           line += " #{t('space.speed_limited')}" if m[:speed_limited]
+          line += " #{t('space.move_blocked')}" if m[:blocked]
           lines << line
         end
 

@@ -89,7 +89,9 @@ module AresMUSH
         ship = SpaceShip.create(
           name: name,
           ship_class: canonical,
-          faction: opts[:faction] || "Unknown",
+          # Classes carry a default faction so a spawned hull reads as UCC
+          # or Swarm on the plot without the GM setting it every time.
+          faction: opts[:faction] || class_data["faction"] || "Unknown",
           sector: sector,
           x: x,
           y: y,

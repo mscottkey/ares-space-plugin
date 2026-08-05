@@ -19,9 +19,13 @@ module AresMUSH
     attribute :width, :type => DataType::Integer, :default => 20
     attribute :height, :type => DataType::Integer, :default => 20
 
-    collection :ships, "AresMUSH::SpaceShip"
-    collection :terrain, "AresMUSH::SpaceTerrain"
-    collection :combats, "AresMUSH::SpaceCombat"
+    # The third argument is load-bearing. Ohm derives a collection's
+    # foreign key from the DECLARING class, so without it these would
+    # look for `space_sector_id` while the references below actually
+    # write `sector_id` - and every use would raise IndexNotFound.
+    collection :ships, "AresMUSH::SpaceShip", :sector
+    collection :terrain, "AresMUSH::SpaceTerrain", :sector
+    collection :combats, "AresMUSH::SpaceCombat", :sector
 
     before_delete :delete_contents
 
