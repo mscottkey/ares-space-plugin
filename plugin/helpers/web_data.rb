@@ -142,6 +142,143 @@ module AresMUSH
         end
       end
 
+      # ---------------------------------------------------------------
+      # The system map - the standard view of space
+      # ---------------------------------------------------------------
+
+      # Everything the browser needs to draw the orbital map. Positions
+      # are computed here rather than in JavaScript: nothing in the
+      # rules depends on where a planet is drawn, so a single
+      # implementation beats keeping two in step.
+      def self.system_map(system_key, viewer_ship = nil)
+        data = Systems.system(system_key)
+        return nil if !data
+
+        Systems.settle_arrivals(system_key)
+
+        layout = Systems.orbit_layout
+        rings = (data["rings"] || 10).to_i
+        size = Astro.canvas_size(rings, layout)
+        center = size / 2.0
+
+        ring_radii = (1..rings).map do |r|
+          { ring: r, radius: Astro.ring_radius(r, layout) }
+        end
+
+        bodies = Systems.bodies(system_key).map do |b|
+          body_map_entry(system_key, b, center, layout)
+        end
+        by_key = bodies.each_with_object({}) { |b, h| h[b[:key]] = b }
+
+        {
+          key: system_key,
+          name: data["name"],
+          description: data["description"],
+          star: {
+            name: data.dig("star", "name"),
+            spectral: data.dig("star", "spectral"),
+            radius: (data.dig("star", "radius") || 24).to_i,
+            x: center,
+            y: center
+          },
+          size: size,
+          center: center,
+          rings: ring_radii,
+          bodies: bodies,
+          ships: system_ship_entries(system_key, by_key, center),
+          legend: Systems.body_classes.map do |name, cfg|
+            { key: name, label: cfg["label"] || name,
+              fill: cfg["fill"], stroke: cfg["stroke"] }
+          end,
+          own_ship: viewer_ship ? ship_map_entry(viewer_ship, by_key, center) : nil
+        }
+      end
+
+      def self.body_map_entry(system_key, body_data, center, layout)
+        key = body_data["key"]
+        ring = Systems.effective_ring(system_key, body_data)
+        radius = Astro.ring_radius(ring, layout)
+        angle = (body_data["angle"] || 0).to_f
+
+        # A moon rides its parent's orbit, offset a little way out.
+        if body_data["parent"]
+          radius += (body_data["moon_orbit"] || 18).to_f
+        end
+
+        x, y = Astro.position(center, center, radius, angle)
+        klass = Systems.body_class(body_data["classification"])
+        faction = Systems.controlling_faction(system_key, body_data)
+        engagement = Systems.engagement_at(system_key, key)
+
+        {
+          key: key,
+          name: body_data["name"] || key,
+          type: body_data["type"],
+          classification: body_data["classification"],
+          description: body_data["description"],
+          callout: body_data["callout"],
+          parent: body_data["parent"],
+          ring: ring,
+          angle: angle,
+          orbit_radius: radius.round(2),
+          x: x,
+          y: y,
+          size: (body_data["size"] || 6).to_i,
+          fill: klass["fill"],
+          stroke: klass["stroke"],
+          faction: faction,
+          faction_color: Systems.faction_color(faction),
+          is_belt: "#{body_data['type']}" == "belt",
+          ships: Systems.ships_at(system_key, key).map { |s| s.name },
+          engaged: !engagement.nil?,
+          sector_id: engagement ? engagement[:sector].id : nil,
+          round: engagement ? engagement[:combat].round.to_i : nil
+        }
+      end
+
+      def self.system_ship_entries(system_key, bodies_by_key, center)
+        Systems.system_ships(system_key).map do |ship|
+          ship_map_entry(ship, bodies_by_key, center)
+        end.compact
+      end
+
+      # A ship sits on its body, or partway along the line to wherever
+      # it's going.
+      def self.ship_map_entry(ship, bodies_by_key, center)
+        origin = bodies_by_key[ship.location_key.to_s]
+        entry = {
+          id: ship.id,
+          name: ship.name,
+          faction: ship.faction,
+          faction_color: Systems.faction_color(ship.faction),
+          location: ship.location_key,
+          location_name: origin ? origin[:name] : nil,
+          in_transit: ship.in_transit?
+        }
+
+        if ship.in_transit?
+          destination = bodies_by_key[ship.destination_key.to_s]
+          from = origin ? [ origin[:x], origin[:y] ] : [ center, center ]
+          to = destination ? [ destination[:x], destination[:y] ] : [ center, center ]
+          fraction = Astro.progress(ship.departed_at, ship.travel_seconds.to_i)
+          x, y = Astro.transit_position(from, to, fraction)
+
+          entry.merge(
+            x: x, y: y,
+            from_x: from[0], from_y: from[1],
+            to_x: to[0], to_y: to[1],
+            destination: ship.destination_key,
+            destination_name: destination ? destination[:name] : nil,
+            progress: fraction.round(3),
+            eta_seconds: ship.eta_seconds,
+            eta: Astro.format_duration(ship.eta_seconds)
+          )
+        else
+          return nil if !origin
+          entry.merge(x: origin[:x], y: origin[:y])
+        end
+      end
+
       # The tactical plot.
       #
       # With a viewer ship, contacts are exactly what that hull's sensors

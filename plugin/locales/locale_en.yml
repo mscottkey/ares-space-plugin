@@ -33,6 +33,22 @@ en:
     combat_already_running: "An engagement is already running in that sector."
     no_fs3: "FS3 is unavailable"
 
+    # Systems, travel and astrography
+    no_systems: "No star systems are configured. See space_systems.yml."
+    no_such_system: "No star system named '%{name}'."
+    no_such_body: "Nothing in this system is called '%{name}'."
+    ship_not_in_system: "That ship isn't in a star system yet. An admin can place it with space/station."
+    already_under_way: "You're already under way to %{destination}, ETA %{eta}."
+    already_there: "You're already at %{name}."
+    cannot_travel_in_combat: "You can't set course while an engagement is running."
+    course_set: "%{ship} is under way to %{destination}. ETA %{eta}."
+    body_claimed: "%{name} is now held by %{faction}."
+    sector_anchored: "Sector %{sector} is anchored at %{body}."
+    ship_stationed: "%{name} is now at %{body} in %{system}."
+    deep_space: "deep space"
+    own_location_line: "%{ship} is holding at %{location}."
+    own_transit_line: "%{ship} is under way to %{destination}, ETA %{eta}."
+
     # Console
     own_status: "%{name} - heading %{facing}, speed %{speed}, at %{x},%{y}  %{hull}"
     no_viewer_ship: "(no own ship - GM view)"

@@ -1,0 +1,98 @@
+<div class="space-system-wrapper">
+  <svg class="space-system-map {{if this.animate 'is-animated'}}"
+       viewBox={{this.viewBox}} preserveAspectRatio="xMidYMid meet">
+
+    <defs>
+      <radialGradient id="space-star-glow">
+        <stop offset="0%" stop-color="#ffd9a0" stop-opacity="0.9" />
+        <stop offset="100%" stop-color="#ffd9a0" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+
+    <g class="space-system-orbits">
+      {{#each this.orbitRings as |ring|}}
+        <circle class="space-system-orbit" cx={{ring.cx}} cy={{ring.cy}} r={{ring.r}} />
+      {{/each}}
+    </g>
+
+    <g class="space-system-star">
+      <circle cx={{this.system.star.x}} cy={{this.system.star.y}}
+              r={{this.system.star.radius}} fill="url(#space-star-glow)"
+              class="space-star-glow" />
+      <circle class="space-star-body"
+              cx={{this.system.star.x}} cy={{this.system.star.y}}
+              r={{this.system.star.radius}}>
+        <title>{{this.system.star.name}} ({{this.system.star.spectral}}-class)</title>
+      </circle>
+    </g>
+
+    <g class="space-system-bodies">
+      {{#each this.bodies as |body|}}
+        <g class="space-orbit-spin" style={{body.style}}>
+          <g class="space-orbit-counter" style={{body.counterStyle}}>
+            <g class="space-system-body
+                      {{if body.selected 'is-selected'}}
+                      {{if body.engaged 'is-engaged'}}
+                      {{if body.isBelt 'is-belt'}}"
+               role="button"
+               {{action "selectBody" body}}>
+
+              {{#if body.factionColor}}
+                <circle class="space-body-faction"
+                        cx={{body.bodyX}} cy={{body.bodyY}}
+                        r={{body.size}} stroke={{body.factionColor}} />
+              {{/if}}
+
+              <circle class="space-body-core"
+                      cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}}
+                      fill={{body.fill}} stroke={{body.stroke}} />
+
+              {{#if body.engaged}}
+                <circle class="space-body-engaged"
+                        cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}} />
+              {{/if}}
+
+              {{#if body.shipCount}}
+                <circle class="space-body-ships"
+                        cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}} />
+              {{/if}}
+
+              <text class="space-body-label" x={{body.bodyX}} y={{body.bodyY}}
+                    dy={{-1}} text-anchor="middle">{{body.name}}</text>
+
+              <title>{{body.name}} &mdash; {{body.classification}}, held by {{body.faction}}{{#if body.engaged}} (ENGAGED, round {{body.round}}){{/if}}</title>
+            </g>
+          </g>
+        </g>
+      {{/each}}
+    </g>
+
+    <g class="space-system-ships">
+      {{#each this.ships as |ship|}}
+        {{#if ship.inTransit}}
+          <line class="space-ship-course"
+                x1={{ship.fromX}} y1={{ship.fromY}}
+                x2={{ship.toX}} y2={{ship.toY}} />
+        {{/if}}
+        <g class="space-system-ship {{if ship.inTransit 'is-transit'}}">
+          <circle class="space-ship-marker" cx={{ship.x}} cy={{ship.y}} r={{5}}
+                  fill={{ship.color}} />
+          <text class="space-ship-label" x={{ship.x}} y={{ship.y}} dy={{-9}}
+                text-anchor="middle">{{ship.name}}</text>
+          <title>{{ship.name}} [{{ship.faction}}]{{#if ship.inTransit}} &rarr; {{ship.destinationName}}, ETA {{ship.eta}}{{/if}}</title>
+        </g>
+      {{/each}}
+    </g>
+  </svg>
+</div>
+
+<div class="space-system-legend">
+  {{#each this.system.legend as |item|}}
+    <span class="space-legend-item">
+      <svg class="space-legend-swatch" viewBox="0 0 14 14" width="14" height="14">
+        <circle cx="7" cy="7" r="5" fill={{item.fill}} stroke={{item.stroke}} />
+      </svg>
+      {{item.label}}
+    </span>
+  {{/each}}
+</div>

@@ -1,0 +1,55 @@
+module AresMUSH
+  module Space
+    # space/station <ship>=<system>/<body>
+    #
+    # Places a ship at a body without any travel time - for setup, or
+    # when a GM needs to move something.
+    class SpaceStationCmd
+      include CommandHandler
+
+      attr_accessor :ship_name, :system_name, :body_name
+
+      def parse_args
+        args = cmd.parse_args(ArgParser.arg1_equals_arg2_slash_optional_arg3)
+        self.ship_name = args.arg1
+        self.system_name = args.arg2
+        self.body_name = args.arg3
+      end
+
+      def required_args
+        [ self.ship_name, self.system_name ]
+      end
+
+      def check_admin
+        return t('dispatcher.not_allowed') if !enactor.is_admin?
+        return nil
+      end
+
+      def handle
+        ship = Ships.find_ship(self.ship_name)
+        return client.emit_failure t('space.ship_not_found', name: self.ship_name) if !ship
+
+        # One argument means a body in the default system.
+        if self.body_name.to_s.empty?
+          key = Systems.default_system_key
+          wanted_body = self.system_name
+        else
+          key = Systems.find_system_key(self.system_name)
+          wanted_body = self.body_name
+        end
+
+        return client.emit_failure t('space.no_such_system', name: self.system_name) if !key
+
+        body = Systems.body(key, wanted_body)
+        return client.emit_failure t('space.no_such_body', name: wanted_body) if !body
+
+        ship.update(system_key: "#{key}", location_key: body["key"],
+                    destination_key: nil, departed_at: nil, travel_seconds: 0)
+
+        client.emit_success t('space.ship_stationed',
+          name: ship.name, body: body["name"] || body["key"],
+          system: Systems.system(key)["name"])
+      end
+    end
+  end
+end

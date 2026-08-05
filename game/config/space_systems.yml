@@ -1,0 +1,272 @@
+space:
+
+  # =====================================================================
+  # Astrography
+  # =====================================================================
+  # Star systems are static worldbuilding, so they live here rather than
+  # in Redis. Who *controls* a body does change, so that's stored in the
+  # database with the `faction` below as the starting value - see
+  # `space/claim`.
+  #
+  # A system is NOT a sector. A sector is the tactical grid where combat
+  # happens (squares a fighter crosses in a round); a system is billions
+  # of km across. Sectors anchor to a body in a system via `space/anchor`,
+  # and the system map then shows where the shooting is.
+  # =====================================================================
+
+  # How a body's classification draws, and what the legend says. Add your
+  # own; the legend on the web map is generated from this list.
+  body_classes:
+    scorched:
+      label: too hot for human use
+      fill: "#fdecea"
+      stroke: "#d9534f"
+    terraformable:
+      label: terraformable candidate
+      fill: "#eaf6ea"
+      stroke: "#5cb85c"
+    unexplored:
+      label: outer system, unexplored
+      fill: "#f0f0f0"
+      stroke: "#9a9a9a"
+    belt:
+      label: asteroid field
+      fill: "#eeeeee"
+      stroke: "#b0b0b0"
+    wreck:
+      label: derelict
+      fill: "#f6efe6"
+      stroke: "#b58a53"
+    station:
+      label: station
+      fill: "#e9f1fb"
+      stroke: "#4a80c0"
+
+  # Faction control draws as a halo ring around a body, so classification
+  # and control are both readable at once.
+  faction_colors:
+    UCC: "#3b7dd8"
+    Swarm: "#c0504d"
+    Derelict: "#8a8a8a"
+    Unclaimed: null      # null = no halo drawn
+
+  # Layout of the orbital rings, in SVG units.
+  orbit_layout:
+    inner_radius: 70     # radius of ring 1
+    ring_step: 46        # spacing between rings
+    ring_curve: 0.92     # <1 gently compresses the outer rings inward
+
+  systems:
+
+    covenant_reach:
+      name: Covenant's Reach
+      description: >
+        The system the Covenant was aimed at, and the one it is now
+        stranded in. Fourteen worlds, two belts, and a swarm that got
+        here first.
+      star:
+        name: Reach
+        spectral: G
+        radius: 26
+      rings: 16
+
+      bodies:
+
+        - key: p1
+          name: P1
+          type: planet
+          classification: scorched
+          ring: 1
+          angle: 8
+          size: 5
+          faction: Unclaimed
+          description: A cinder. Tide-locked, atmosphere long since boiled off.
+
+        - key: p2
+          name: P2
+          type: planet
+          classification: scorched
+          ring: 2
+          angle: 34
+          size: 6
+          faction: Unclaimed
+          description: Molten dayside, metal-rich crust. Mining would kill you.
+
+        - key: p3
+          name: P3
+          type: planet
+          classification: terraformable
+          ring: 3
+          angle: 62
+          size: 9
+          faction: Swarm
+          callout: swarm-held, the target world
+          description: >
+            The world the Covenant crossed the dark for. Breathable within
+            a generation of work - and already occupied.
+
+        - key: p3_moon
+          name: Sentinel
+          type: moon
+          classification: unexplored
+          parent: p3
+          moon_orbit: 22
+          angle: 210
+          size: 3
+          faction: Unclaimed
+          description: P3's single moon. Something on it is still transmitting.
+
+        - key: inner_belt
+          name: Inner Belt
+          type: belt
+          classification: belt
+          ring: 5
+          size: 4
+          faction: Unclaimed
+          description: Dense, metal-rich, and a good place to lose a pursuer.
+
+        - key: p4
+          name: P4
+          type: planet
+          classification: terraformable
+          ring: 4
+          angle: 96
+          size: 8
+          faction: Unclaimed
+          callout: unexplored, the backup candidate
+          description: >
+            Colder and drier than P3, but nothing lives there. If P3
+            cannot be taken, this is the fallback.
+
+        - key: concord
+          name: Wreck of the Concord
+          type: wreck
+          classification: wreck
+          ring: 6
+          angle: 140
+          size: 6
+          faction: Derelict
+          callout: the sister ship
+          description: >
+            The Covenant's twin, dead in a slow orbit. Salvage, graveyard,
+            and the best cover in the system.
+
+        - key: p5
+          name: P5
+          type: planet
+          classification: unexplored
+          ring: 7
+          angle: 172
+          size: 7
+          faction: Unclaimed
+
+        - key: p6
+          name: P6
+          type: planet
+          classification: unexplored
+          ring: 8
+          angle: 205
+          size: 6
+          faction: Unclaimed
+
+        - key: p7
+          name: P7
+          type: planet
+          classification: unexplored
+          ring: 9
+          angle: 238
+          size: 8
+          faction: Unclaimed
+
+        - key: p8
+          name: P8
+          type: planet
+          classification: unexplored
+          ring: 10
+          angle: 262
+          size: 7
+          faction: Unclaimed
+
+        - key: p9
+          name: P9
+          type: planet
+          classification: unexplored
+          ring: 11
+          angle: 292
+          size: 6
+          faction: Unclaimed
+
+        - key: p10
+          name: P10
+          type: planet
+          classification: unexplored
+          ring: 12
+          angle: 318
+          size: 7
+          faction: Unclaimed
+
+        - key: p11
+          name: P11
+          type: planet
+          classification: unexplored
+          ring: 13
+          angle: 344
+          size: 6
+          faction: Unclaimed
+
+        - key: p12
+          name: P12
+          type: planet
+          classification: unexplored
+          ring: 14
+          angle: 18
+          size: 7
+          faction: Unclaimed
+
+        - key: p13
+          name: P13
+          type: planet
+          classification: unexplored
+          ring: 15
+          angle: 48
+          size: 6
+          faction: Unclaimed
+
+        - key: p14
+          name: P14
+          type: planet
+          classification: unexplored
+          ring: 16
+          angle: 78
+          size: 5
+          faction: Unclaimed
+
+        - key: outer_belt
+          name: Outer Belt
+          type: belt
+          classification: belt
+          ring: 17
+          size: 4
+          faction: Unclaimed
+          description: Cometary debris. Cold, sparse, and effectively endless.
+
+  # =====================================================================
+  # Travel
+  # =====================================================================
+  # A ship's normal position is a body in a system - orbiting P3, docked
+  # at the Concord, holding in the belt. Sectors are only spun up when
+  # there's a fight.
+  #
+  # Travel resolves lazily: departure time and duration are stored, and
+  # arrival is worked out whenever anyone looks. No scheduler, no
+  # background task, consistent with the rest of the plugin.
+  travel:
+    # Seconds per orbital ring crossed, before the hull's speed is applied.
+    seconds_per_ring: 180
+    # Minimum trip time, so hopping to the next ring still takes a moment.
+    minimum_seconds: 60
+    # A hull's `speed` stat divides the trip time; this is the speed that
+    # counts as "par". A Talon (speed 4) is twice as fast as par 2.
+    par_speed: 2
+    # Ships can't set course while an engagement is running in their sector.
+    block_during_combat: true

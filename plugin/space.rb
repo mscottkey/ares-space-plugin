@@ -16,8 +16,12 @@ module AresMUSH
       when 'space'
         case cmd.switch
 
-        # Consoles
-        when 'tac', 'tactical', nil
+        # Consoles. The system map is the default view: space is where
+        # ships live, and a tactical sector is the exception you drop
+        # into when there's a fight.
+        when 'system', 'map', nil
+          return SpaceSystemCmd
+        when 'tac', 'tactical'
           return SpaceTacCmd
         when 'status'
           return SpaceStatusCmd
@@ -41,6 +45,8 @@ module AresMUSH
           return SpaceSweepCmd
         when 'clear'
           return SpaceClearCmd
+        when 'travel', 'nav'
+          return SpaceTravelCmd
 
         # GM
         when 'sector'
@@ -55,6 +61,12 @@ module AresMUSH
           return SpaceCrewCmd
         when 'terrain'
           return SpaceTerrainCmd
+        when 'claim'
+          return SpaceClaimCmd
+        when 'anchor'
+          return SpaceAnchorCmd
+        when 'station'
+          return SpaceStationCmd
         when 'start'
           return SpaceStartCmd
         when 'resolve'
@@ -102,6 +114,10 @@ module AresMUSH
         return SpaceOrderRequestHandler
       when "spaceResolve"
         return SpaceResolveRequestHandler
+      when "spaceSystem"
+        return SpaceSystemRequestHandler
+      when "spaceTravel"
+        return SpaceTravelRequestHandler
       end
       return nil
     end

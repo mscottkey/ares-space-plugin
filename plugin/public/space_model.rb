@@ -19,6 +19,12 @@ module AresMUSH
     attribute :width, :type => DataType::Integer, :default => 20
     attribute :height, :type => DataType::Integer, :default => 20
 
+    # Where in the astrography this tactical grid sits. A sector is only
+    # spun up when there's a fight; anchoring it to a body lets the
+    # system map show where the shooting is.
+    attribute :system_key
+    attribute :body_key
+
     # The third argument is load-bearing. Ohm derives a collection's
     # foreign key from the DECLARING class, so without it these would
     # look for `space_sector_id` while the references below actually
@@ -114,6 +120,18 @@ module AresMUSH
     attribute :status, :default => "active"   # active | destroyed | derelict | docked
     attribute :destroyed_reason
 
+    # A ship's normal position: a body in a star system. The sector
+    # below is only set while it's in a tactical engagement.
+    attribute :system_key
+    index :system_key
+    attribute :location_key
+
+    # Set only while under way. Arrival is worked out lazily from these
+    # rather than by any scheduled task - see Systems.settle_arrival.
+    attribute :destination_key
+    attribute :departed_at, :type => DataType::Time
+    attribute :travel_seconds, :type => DataType::Integer, :default => 0
+
     reference :sector, "AresMUSH::SpaceSector"
     index :sector_id
     reference :carrier, "AresMUSH::SpaceShip"
@@ -121,6 +139,26 @@ module AresMUSH
     def save_upcase
       self.name_upcase = self.name ? self.name.upcase : nil
     end
+
+    def in_transit?
+      !self.destination_key.to_s.empty? && !self.departed_at.nil?
+    end
+
+    def eta_seconds
+      Space::Astro.seconds_remaining(self.departed_at, self.travel_seconds.to_i)
+    end
+  end
+
+  # Who holds a body right now. The astrography itself is static config;
+  # only control changes during play, so only control lives here.
+  class SpaceBodyState < Ohm::Model
+    include ObjectModel
+
+    attribute :system_key
+    index :system_key
+    attribute :body_key
+    attribute :faction
+    attribute :notes
   end
 
   # An engagement in a sector. Sectors can hold drifting contacts with no

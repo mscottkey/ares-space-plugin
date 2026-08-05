@@ -2,6 +2,7 @@
 # tools/demo.rb can drive a scenario from a plain ruby run.
 
 require_relative "../helpers/geometry"
+require_relative "../helpers/astro"
 require_relative "../helpers/rules"
 require_relative "../helpers/ship_behavior"
 require_relative "../helpers/space_config"
