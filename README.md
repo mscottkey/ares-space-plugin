@@ -1,16 +1,7 @@
 # ares-space-plugin
 
 Space and space-combat system for [AresMUSH](https://aresmush.com), built for
-the UCC Covenant game but written as a general-purpose plugin.
-
-**Status: tactical-tabletop POC plus a web portal page. Verified on a
-real AresMUSH server; the Ember page is not yet built.** 125 specs pass,
-and every command and web handler has been exercised against a live
-instance with Redis (see [docs/dev-server.md](docs/dev-server.md)). The
-portal files are syntax-checked but no `ember build` has run against
-them.
-See [docs/architecture.md](docs/architecture.md) for the design and
-[docs/install.md](docs/install.md) to try it.
+the Lost Colony game but written as a general-purpose plugin.
 
 ## What it is
 
@@ -36,18 +27,6 @@ A single Ares plugin providing:
   the public `FS3Skills` API. This plugin extends FS3 into space; it does
   not replace it.
 
-## Hard constraints
-
-- Plugins only. No AresMUSH core changes, ever.
-- Follows official [Ares plugin conventions](https://aresmush.com/tutorials/code/).
-- Uses core FS3 for all skill resolution.
-
-## Try it
-
-```
-cp -r plugin /path/to/aresmush/game/plugins/space   # folder must be "space"
-cp game/config/space*.yml /path/to/aresmush/game/config/
-```
 
 Restart, or `load space` to pick it up without one. Then `config/check`
 to catch station skills your game's FS3 doesn't define. Full steps and
@@ -92,13 +71,6 @@ webportal/
   custom_files/       custom-routes.js (portal's route hook)
 tools/demo.rb         scripted engagement, no server needed
 ```
-
-## Lineage
-
-Structural conventions follow
-[ares-universalmap-plugin](https://github.com/mscottkey/ares-universalmap-plugin);
-the assessment that led to this being a separate plugin lives in that
-repo's `docs/foundation-assessment.md`.
 
 ## License
 
