@@ -36,18 +36,6 @@ A single Ares plugin providing:
   the public `FS3Skills` API. This plugin extends FS3 into space; it does
   not replace it.
 
-## Hard constraints
-
-- Plugins only. No AresMUSH core changes, ever.
-- Follows official [Ares plugin conventions](https://aresmush.com/tutorials/code/).
-- Uses core FS3 for all skill resolution.
-
-## Try it
-
-```
-cp -r plugin /path/to/aresmush/game/plugins/space   # folder must be "space"
-cp game/config/space*.yml /path/to/aresmush/game/config/
-```
 
 Restart, then `manage/checkconfig` to catch station skills your game's
 FS3 doesn't define. Full steps and a smoke test in
@@ -91,13 +79,6 @@ webportal/
   custom_files/       custom-routes.js (portal's route hook)
 tools/demo.rb         scripted engagement, no server needed
 ```
-
-## Lineage
-
-Structural conventions follow
-[ares-universalmap-plugin](https://github.com/mscottkey/ares-universalmap-plugin);
-the assessment that led to this being a separate plugin lives in that
-repo's `docs/foundation-assessment.md`.
 
 ## License
 
