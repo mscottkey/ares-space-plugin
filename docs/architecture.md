@@ -139,7 +139,10 @@ One number per class, roughly log-scale (3 fighter, 4 shuttle, 5 gunboat,
 
 ## 5. Stations and FS3 integration (exact call points)
 
-`space.yml` maps stations to FS3 abilities, per-game configurable:
+`space.yml` maps stations to FS3 abilities, per-game configurable.
+(Illustrative names below; the ability names actually shipped as
+defaults are §12's Technician/Alertness/Composure, chosen because they
+exist in stock FS3 — "Engineering" and "Sensors" don't.)
 
 ```yaml
 space:
@@ -147,8 +150,8 @@ space:
     pilot:       Piloting
     helm:        Piloting
     gunnery:     Gunnery
-    engineering: Engineering
-    sensors:     Sensors     # or whatever the game's skill list has
+    engineering: Engineering  # whatever the game's skill list has
+    sensors:     Sensors
 ```
 
 Every human action is one FS3 roll, made at resolution time:

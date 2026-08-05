@@ -49,10 +49,11 @@ cp -r plugin /path/to/aresmush/game/plugins/space   # folder must be "space"
 cp game/config/space*.yml /path/to/aresmush/game/config/
 ```
 
-Restart, then `manage/checkconfig` to catch station skills your game's
-FS3 doesn't define. Full steps and a smoke test in
-[docs/install.md](docs/install.md); to spin up a throwaway Ares instance
-to test against, see [docs/dev-server.md](docs/dev-server.md).
+Restart, or `load space` to pick it up without one. Then `config/check`
+to catch station skills your game's FS3 doesn't define. Full steps and
+a smoke test in [docs/install.md](docs/install.md); to spin up a
+throwaway Ares instance to test against, see
+[docs/dev-server.md](docs/dev-server.md).
 
 To see it work without a server:
 

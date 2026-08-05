@@ -32,21 +32,33 @@ station_skills:
   pilot: Piloting
   helm: Piloting
   gunnery: Gunnery
-  engineering: Engineering
-  sensors: Sensors
-  flight_ops: Leadership
+  engineering: Technician
+  sensors: Alertness
+  flight_ops: Composure
 ```
 
-These must be abilities your game's FS3 config actually defines. Any that
-don't exist will roll a flat untrained pool instead — which works, but
-means nobody's skill matters at that station. After starting the game,
-run `manage/checkconfig`: this plugin reports every station mapped to an
-ability FS3 doesn't know, along with unknown weapons and bad firing arcs
-in your ship classes.
+The shipped defaults are stock FS3 ability names (`Piloting`, `Gunnery`,
+`Technician`, `Alertness`, `Composure`), so a fresh game works with no
+changes. If your game has renamed or replaced any of these, update the
+mapping to match. Anything that doesn't resolve to a real FS3 ability
+rolls a flat untrained pool instead — which works, but means nobody's
+skill matters at that station. After loading the plugin, run
+`config/check`: it reports every station mapped to an ability FS3
+doesn't know, along with unknown weapons and bad firing arcs in your
+ship classes.
 
-## 4. Restart
+## 4. Load it
 
-Restart the game, or `manage/load space` if you prefer.
+Restart the game, or load the plugin without restarting:
+
+```
+load space
+```
+
+(not `manage/load` — the command's root is just `load`.) Confirm it
+took with `plugins`, which lists everything currently loaded. Both
+`load` and `config/check` require Admin or the `manage_game`
+permission.
 
 At this point the in-game side works. The web portal is optional and
 takes a rebuild — steps 6 onward.
