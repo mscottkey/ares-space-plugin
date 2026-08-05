@@ -1,5 +1,43 @@
 # Installing
 
+## Option A — the built-in installer (recommended)
+
+AresMUSH can install a plugin straight from its GitHub repo. As an
+admin, in-game:
+
+```
+plugin/install https://github.com/mscottkey/ares-space-plugin
+```
+
+This clones the repo on the server and copies:
+
+- `plugin/` → `plugins/space/`
+- `game/*` → `game/` (merges `space.yml`, `space_ships.yml`,
+  `space_weapons.yml` into your existing `game/config/`)
+- `webportal/*` → `<your ares-webportal checkout>/app/` — only if that
+  checkout exists on the server at the path configured in
+  `website.website_code_path`; otherwise it warns and skips
+
+It then loads the plugin automatically — no separate `load space` needed
+for a first install.
+
+**Requires:** the repo name to match `ares-<name>-plugin` (this one does:
+plugin name resolves to `space`), and `git` reachable from the server.
+
+**Not handled automatically — see "Web portal" below:**
+- `custom_files/custom-routes.js` needs manual merging, since it's a
+  hook shared by every plugin that adds portal pages.
+- Rebuilding the Ember portal (`ember build`).
+
+**Updating an existing install:** re-running `plugin/install` refreshes
+`plugins/space/` but does **not** re-copy `game/config/space*.yml` once
+they already exist (it warns and tells you to copy them by hand if you
+want to overwrite your tuning). Fine for picking up code fixes; if a
+release changes the shipped defaults and you want those too, copy the
+config files over manually.
+
+## Option B — manual copy (SFTP, or no server-side git)
+
 ## 1. Plugin files
 
 Copy the `plugin/` directory into your game as `plugins/space`:
@@ -60,8 +98,8 @@ took with `plugins`, which lists everything currently loaded. Both
 `load` and `config/check` require Admin or the `manage_game`
 permission.
 
-At this point the in-game side works. The web portal is optional and
-takes a rebuild — steps 6 onward.
+Option A (`plugin/install`) already does this step for you on first
+install.
 
 ## 5. Smoke test
 
@@ -81,32 +119,36 @@ space/resolve Test Sector
 ## 6. Web portal (optional)
 
 The portal files are plain Ember — no React, no separate bundle, no
-webpack. They are **additive**: every file is new except
-`custom-routes.js` and `custom.scss`, which are the portal's sanctioned
-customization hooks. Nothing here patches a stock portal file, so an
-upstream portal upgrade won't clobber them.
+webpack. `webportal/` mirrors the layout of `ares-webportal`'s `app/`
+directory directly (`webportal/routes/`, `webportal/templates/`, etc.),
+which is what lets `plugin/install` copy it straight across; `custom_files/`
+sits outside `webportal/` at the repo root for exactly the opposite
+reason — it's never auto-copied, because it holds files meant to be
+merged by hand.
 
-Copy into your portal checkout:
+If you used Option A and the auto-copy skipped (checkout not found) or
+you're doing this by SFTP, copy into your portal checkout:
 
 | From | To |
 |---|---|
-| `webportal/app/routes/space-sectors.js` | `aresmush/webportal/app/routes/` |
-| `webportal/app/routes/space-tactical.js` | `aresmush/webportal/app/routes/` |
-| `webportal/app/controllers/space-tactical.js` | `aresmush/webportal/app/controllers/` |
-| `webportal/app/templates/space-sectors.hbs` | `aresmush/webportal/app/templates/` |
-| `webportal/app/templates/space-tactical.hbs` | `aresmush/webportal/app/templates/` |
-| `webportal/app/components/space-plot.js` | `aresmush/webportal/app/components/` |
-| `webportal/app/components/space-plot.hbs` | `aresmush/webportal/app/components/` |
+| `webportal/routes/space-sectors.js` | `aresmush/webportal/app/routes/` |
+| `webportal/routes/space-tactical.js` | `aresmush/webportal/app/routes/` |
+| `webportal/controllers/space-tactical.js` | `aresmush/webportal/app/controllers/` |
+| `webportal/templates/space-sectors.hbs` | `aresmush/webportal/app/templates/` |
+| `webportal/templates/space-tactical.hbs` | `aresmush/webportal/app/templates/` |
+| `webportal/components/space-plot.js` | `aresmush/webportal/app/components/` |
+| `webportal/components/space-plot.hbs` | `aresmush/webportal/app/components/` |
 
 Component JS and HBS are **colocated** in `app/components/` — that is the
 current portal's layout, not `app/templates/components/`.
 
 ### Register the routes
 
-`webportal/custom_files/custom-routes.js` goes to
-`aresmush/webportal/app/custom-routes.js`. **If your game already has
-routes in that file, merge rather than overwrite** — it is one shared
-hook for every plugin that adds pages. The two lines that matter:
+`custom_files/custom-routes.js` goes to
+`aresmush/webportal/app/custom-routes.js`. **Always merge, never
+overwrite** — it's one hook shared by every plugin that adds pages, and
+`plugin/install` never touches it automatically for that reason. The two
+lines that matter:
 
 ```js
 router.route('space-sectors', { path: '/space' });
@@ -119,7 +161,7 @@ on current portal versions.)
 
 ### Styles
 
-Append `webportal/app/styles/_space.scss` to
+Append `webportal/styles/_space.scss` to
 `aresmush/webportal/app/styles/custom.scss`, or drop it in `styles/` and
 `@import 'space';` from custom.scss.
 

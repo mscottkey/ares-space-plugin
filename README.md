@@ -3,6 +3,12 @@
 Space and space-combat system for [AresMUSH](https://aresmush.com), built for
 the Lost Colony game but written as a general-purpose plugin.
 
+## Install
+
+```
+plugin/install https://github.com/mscottkey/ares-space-plugin
+```
+
 ## What it is
 
 A single Ares plugin providing:
@@ -28,11 +34,11 @@ A single Ares plugin providing:
   not replace it.
 
 
-Restart, or `load space` to pick it up without one. Then `config/check`
-to catch station skills your game's FS3 doesn't define. Full steps and
-a smoke test in [docs/install.md](docs/install.md); to spin up a
-throwaway Ares instance to test against, see
-[docs/dev-server.md](docs/dev-server.md).
+`plugin/install` loads it automatically. Then `config/check` to catch
+station skills your game's FS3 doesn't define. Full steps, the manual
+(SFTP) install path, and a smoke test are in
+[docs/install.md](docs/install.md); to spin up a throwaway Ares instance
+to test against, see [docs/dev-server.md](docs/dev-server.md).
 
 To see it work without a server:
 
@@ -62,13 +68,16 @@ plugin/
   web/                request handlers (tactical, sectors, ship, order, resolve)
   specs/              125 specs + in-memory harness
 game/config/          space.yml, space_ships.yml, space_weapons.yml
-webportal/
-  app/routes/         space-sectors, space-tactical
-  app/controllers/    space-tactical
-  app/templates/      the two pages
-  app/components/     space-plot (SVG, square + hex), colocated js + hbs
-  app/styles/         _space.scss
-  custom_files/       custom-routes.js (portal's route hook)
+webportal/            mirrors ares-webportal's app/ layout, so
+                      plugin/install can copy it straight across
+  routes/             space-sectors, space-tactical
+  controllers/        space-tactical
+  templates/          the two pages
+  components/         space-plot (SVG, square + hex), colocated js + hbs
+  styles/             _space.scss
+custom_files/         custom-routes.js (portal's shared route hook -
+                      outside webportal/ so the installer never
+                      auto-copies it; always merge by hand)
 tools/demo.rb         scripted engagement, no server needed
 ```
 
