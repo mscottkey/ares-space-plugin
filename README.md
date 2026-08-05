@@ -1,16 +1,7 @@
 # ares-space-plugin
 
 Space and space-combat system for [AresMUSH](https://aresmush.com), built for
-the UCC Covenant game but written as a general-purpose plugin.
-
-**Status: tactical-tabletop POC plus a web portal page. Verified on a
-real AresMUSH server; the Ember page is not yet built.** 125 specs pass,
-and every command and web handler has been exercised against a live
-instance with Redis (see [docs/dev-server.md](docs/dev-server.md)). The
-portal files are syntax-checked but no `ember build` has run against
-them.
-See [docs/architecture.md](docs/architecture.md) for the design and
-[docs/install.md](docs/install.md) to try it.
+the Lost Colony game but written as a general-purpose plugin.
 
 ## What it is
 
