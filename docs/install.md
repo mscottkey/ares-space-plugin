@@ -172,8 +172,24 @@ In `game/config/website.yml`:
 ```yaml
 top_navbar:
   - title: Space
-    route: space-sectors
+    menu:
+      - title: Map
+        route: space-system
+      - title: Sectors
+        route: space-sectors
 ```
+
+`route:` takes the **route name, not the URL path**. The system map is
+named `space-system` even though it lives at `/space`, so `route: space`
+throws inside `LinkTo` and breaks the whole menu.
+
+Don't put `space-tactical` in the navbar - it needs an `:id` and a
+`LinkTo` without one fails the same way. It's reached by clicking a
+sector, or from a body's engagement link on the system map.
+
+Run `load config` in-game afterwards. The link only resolves once the
+routes are actually built into the portal, so do this after the rebuild
+below.
 
 ### Rebuild the portal
 
