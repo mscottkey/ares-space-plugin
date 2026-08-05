@@ -1,0 +1,30 @@
+{{page-title "Sectors"}}
+
+<h1>Sectors</h1>
+
+{{#if this.model.length}}
+  <table class="table space-sector-list">
+    <thead>
+      <tr><th>Sector</th><th>Geometry</th><th>Size</th><th>Ships</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {{#each this.model as |s|}}
+        <tr>
+          <td><LinkTo @route="space-tactical" @model={{s.id}}>{{s.name}}</LinkTo></td>
+          <td>{{s.geometry}}</td>
+          <td>{{s.width}}x{{s.height}}</td>
+          <td>{{s.ship_count}}</td>
+          <td>
+            {{#if s.in_combat}}
+              <span class="space-status-engaged">Engaged (round {{s.round}})</span>
+            {{else}}
+              <span class="space-status-quiet">Quiet</span>
+            {{/if}}
+          </td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <p>You aren't crewing a ship in any sector.</p>
+{{/if}}

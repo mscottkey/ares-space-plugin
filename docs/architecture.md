@@ -203,18 +203,38 @@ We never touch fs3combat's combat loop — only fs3skills' public API.
 GM/admin: `space/newsector`, `space/spawn <class>=<name>`, `space/crew`,
 `space/start`, `space/resolve`, `space/damage`, `space/remove`.
 
-## 8. Web portal (post-POC)
+## 8. Web portal
 
-Native Ember, no React/webpack:
+Built. Native Ember, no React and no separate bundle step.
 
-- Route added via the portal's sanctioned `app/custom-routes.js` hook +
-  route/template/component files shipped in `webportal/` with install
-  instructions (additive files survive portal upgrades).
-- Data via `gameApi.requestOne('space_tac', …)` → engine `POST /request` →
-  our `get_web_request_handler`.
-- Live updates via `Global.client_monitor.notify_web_clients(:space_activity,
-  data, true)` over the existing portal websocket — the exact pattern
-  fs3combat uses for `combat_activity` / `new_combat_turn`.
+- **Routes** registered through the portal's sanctioned
+  `app/custom-routes.js` hook: `/space` (sector list) and `/space/:id`
+  (tactical plot). Every other file is new, so a portal upgrade doesn't
+  collide with them.
+- **Data** via `gameApi.requestOne('spaceTactical', { id })` and friends,
+  which POST to the engine's `/request` endpoint and land in
+  `get_web_request_handler`. Handlers return `{ error: ... }` on failure -
+  the portal checks `response.error`; a `c_error` key (which the
+  universalmap plugin used) is silently ignored by the portal and was a
+  real bug inherited from it.
+- **Rendering** is one SVG component, `space-plot`, that draws square and
+  hex sectors from the same payload. Its geometry math deliberately
+  mirrors `helpers/geometry.rb` one-for-one - same axial projection, same
+  direction tables - so the browser and the ASCII console agree about
+  where things are.
+- **Orders** from the browser call `Orders.issue`, the same entry point
+  the in-game commands use. Neither surface can drift into validating
+  differently, and both produce the same warnings ("that turn exceeds
+  your agility", "that hardpoint doesn't bear yet").
+- **Live updates** via `Global.client_monitor.notify_web_clients` over
+  the websocket the portal already keeps open - the pattern fs3combat
+  uses for `combat_activity`. Payloads are prefixed with the sector id so
+  a page ignores traffic for sectors it isn't watching. No polling.
+- **Sensor discipline holds in the browser.** The tactical payload is
+  built per viewer: unidentified contacts carry position and nothing
+  else, so a player cannot read a name or hull state out of the network
+  tab that their crew hasn't resolved. Staff with no ship in the sector
+  get the god view explicitly.
 
 ## 9. Phase two — pseudo-real-time (deferred; feasibility notes)
 
@@ -266,7 +286,7 @@ All five resolved; the POC is built on these.
 
 ## 11. What the POC actually implements
 
-Built and covered by 92 passing specs (`rspec` at the repo root):
+Built and covered by 121 passing specs (`rspec` at the repo root):
 
 - Sectors, ships, terrain and engagements as Ohm models.
 - Square and hex geometry, facing, turn cost limited by agility, arcs.
@@ -275,14 +295,13 @@ Built and covered by 92 passing specs (`rspec` at the repo root):
 - Per-ship sensor contacts with identification falloff and terrain
   concealment.
 - Order commands, the round resolver, and an ASCII tactical console.
-- Web request handlers ready for the Ember page.
+- Web request handlers and an Ember portal page (§8).
 
 `tools/demo.rb` runs a scripted engagement and prints the console and
 round report with no game server, for tuning by eye.
 
 ## 12. Still to do
 
-- The Ember tactical page (§8) — handlers exist, the portal files don't.
 - Carrier operations: launching and recovering fighters from the
   Covenant's flight deck (`carrier` reference exists on the model).
 - Pseudo-real-time tick (§9), after the POC has been played.

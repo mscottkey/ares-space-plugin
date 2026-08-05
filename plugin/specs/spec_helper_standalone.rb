@@ -12,6 +12,7 @@ require_relative "../helpers/sensors"
 require_relative "../helpers/resolver"
 require_relative "../helpers/engagements"
 require_relative "../helpers/display"
+require_relative "../helpers/web_data"
 
 # Must come last: it points the lookups at the in-memory world.
 require_relative "support/harness"

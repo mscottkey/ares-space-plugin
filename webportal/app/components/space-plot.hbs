@@ -1,0 +1,51 @@
+<div class="space-plot-wrapper">
+  <svg class="space-plot" viewBox={{this.viewBox}} preserveAspectRatio="xMidYMid meet">
+
+    <g class="space-plot-cells">
+      {{#each this.cells as |cell|}}
+        {{#if cell.isHex}}
+          <polygon class="space-plot-cell" points={{cell.points}} />
+        {{else}}
+          <rect class="space-plot-cell" x={{cell.x}} y={{cell.y}}
+                width={{cell.size}} height={{cell.size}} />
+        {{/if}}
+      {{/each}}
+    </g>
+
+    <g class="space-plot-terrain">
+      {{#each this.terrainMarks as |t|}}
+        <circle class="space-plot-terrain-area space-plot-terrain-{{t.type}}"
+                cx={{t.cx}} cy={{t.cy}} r={{t.r}}>
+          <title>{{t.label}}</title>
+        </circle>
+      {{/each}}
+    </g>
+
+    <g class="space-plot-ships">
+      {{#each this.markers as |m|}}
+        <g class="space-plot-ship
+                  {{if m.isOwn 'is-own'}}
+                  {{if m.selected 'is-selected'}}
+                  {{unless m.identified 'is-unknown'}}
+                  {{if m.destroyed 'is-destroyed'}}"
+           role={{if m.canSelect "button"}}
+           {{action "selectContact" m}}>
+
+          {{#if m.showFacing}}
+            <line class="space-plot-facing"
+                  x1={{m.cx}} y1={{m.cy}} x2={{m.fx}} y2={{m.fy}} />
+          {{/if}}
+
+          <circle class="space-plot-hull" cx={{m.cx}} cy={{m.cy}} r={{m.r}} />
+          <text class="space-plot-label" x={{m.cx}} y={{m.cy}}
+                text-anchor="middle" dominant-baseline="central">{{m.initial}}</text>
+
+          <title>
+            {{m.name}}{{#if m.faction}} [{{m.faction}}]{{/if}}{{#if m.identified}}
+             - shields {{m.shields}}/{{m.maxShields}}, hull {{m.hull}}/{{m.maxHull}}{{/if}}
+          </title>
+        </g>
+      {{/each}}
+    </g>
+  </svg>
+</div>

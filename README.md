@@ -3,9 +3,10 @@
 Space and space-combat system for [AresMUSH](https://aresmush.com), built for
 the UCC Covenant game but written as a general-purpose plugin.
 
-**Status: tactical-tabletop POC, untested on a live game.** The rules
-engine, commands, console and config are written and covered by 92
-passing specs, but nothing has run against a real AresMUSH server yet.
+**Status: tactical-tabletop POC plus a web portal page, untested on a
+live game.** The rules engine, commands, ASCII console, Ember portal page
+and config are written and covered by 121 passing specs, but nothing has
+run against a real AresMUSH server or portal build yet.
 See [docs/architecture.md](docs/architecture.md) for the design and
 [docs/install.md](docs/install.md) to try it.
 
@@ -23,6 +24,11 @@ A single Ares plugin providing:
 - **Turn-based combat resolution** — players issue orders, the round
   resolves, an ASCII tactical display renders. Fully request-response; no
   game loop.
+- **A web portal page** — the same sector drawn as SVG (square or hex),
+  with clickable targeting and order buttons, updating live over the
+  portal's websocket when a round resolves. Plain Ember, no bundle step.
+  Orders from the browser run through the same validation as the
+  in-game commands.
 - **FS3 integration** — every human action (piloting, gunnery,
   engineering, damage control) resolves through core FS3 skill rolls via
   the public `FS3Skills` API. This plugin extends FS3 into space; it does
@@ -67,11 +73,19 @@ plugin/
     sensors.rb        per-ship contact detection
     orders.rb         order storage and validation
     display.rb        ASCII tactical console and round report
+    web_data.rb       JSON payloads for the portal, sensor-filtered
   commands/           22 player and GM commands
   templates/          ERB for the console and ship status
-  web/                request handlers for the (future) Ember page
-  specs/              92 specs + in-memory harness
+  web/                request handlers (tactical, sectors, ship, order, resolve)
+  specs/              121 specs + in-memory harness
 game/config/          space.yml, space_ships.yml, space_weapons.yml
+webportal/
+  app/routes/         space-sectors, space-tactical
+  app/controllers/    space-tactical
+  app/templates/      the two pages
+  app/components/     space-plot (SVG, square + hex), colocated js + hbs
+  app/styles/         _space.scss
+  custom_files/       custom-routes.js (portal's route hook)
 tools/demo.rb         scripted engagement, no server needed
 ```
 

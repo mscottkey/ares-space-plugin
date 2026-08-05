@@ -78,12 +78,30 @@ module AresMUSH
       nil
     end
 
+    # Emits the result of Orders.issue to a telnet client. The web portal
+    # hands the same structure back as JSON, so both surfaces report a
+    # given order identically.
+    def self.emit_order_result(client, result)
+      if result[:error]
+        client.emit_failure result[:error]
+        return
+      end
+      (result[:warnings] || []).each { |w| client.emit_ooc w }
+      client.emit_success result[:message] if result[:message]
+    end
+
     def self.get_web_request_handler(request)
       case request.cmd
-      when "space_tac"
-        return SpaceTacRequestHandler
-      when "space_ship"
+      when "spaceTactical"
+        return SpaceTacticalRequestHandler
+      when "spaceSectors"
+        return SpaceSectorsRequestHandler
+      when "spaceShip"
         return SpaceShipRequestHandler
+      when "spaceOrder"
+        return SpaceOrderRequestHandler
+      when "spaceResolve"
+        return SpaceResolveRequestHandler
       end
       return nil
     end

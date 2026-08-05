@@ -42,6 +42,7 @@ module AresMUSH
         rendered = Display.render_report(report, sector.geometry)
         client.emit rendered
         Engagements.notify_crews(sector, rendered)
+        Engagements.notify_web(sector, :space_round, rendered)
       end
     end
   end

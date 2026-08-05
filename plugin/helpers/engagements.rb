@@ -52,6 +52,29 @@ module AresMUSH
         end
       end
 
+      # Pushes an update to any portal client watching this sector, over
+      # the websocket the portal already maintains - the same mechanism
+      # fs3combat uses for combat_activity. Staff and anyone crewing a
+      # ship in the sector get it.
+      #
+      # The message is prefixed with the sector id so the page can ignore
+      # traffic for a sector it isn't looking at.
+      def self.notify_web(sector, type, message)
+        return if !defined?(Global) || !Global.respond_to?(:client_monitor)
+
+        crew_ids = Ships.sector_ships(sector).flat_map do |ship|
+          ship.stations.values.map { |crew| Crew.crew_char(crew) }
+        end.compact.map { |char| char.id.to_s }
+
+        payload = "#{sector.id}|#{message}"
+
+        Global.client_monitor.notify_web_clients(type, payload, true) do |char|
+          char && (crew_ids.include?(char.id.to_s) || char.is_admin?)
+        end
+      rescue => e
+        Global.logger.warn "Space: failed to notify web clients: #{e}"
+      end
+
       # Whether the round is ready to resolve on its own. The POC leaves
       # auto_resolve off and the GM in charge, but the resolver does not
       # care which of the two calls it.

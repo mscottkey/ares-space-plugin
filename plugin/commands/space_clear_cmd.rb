@@ -7,8 +7,7 @@ module AresMUSH
         ship = Ships.ship_for_char(enactor)
         return client.emit_failure t('space.not_crewing') if !ship
 
-        Orders.clear(ship)
-        client.emit_success t('space.orders_cleared', ship: ship.name)
+        Space.emit_order_result(client, Orders.issue(ship, :clear))
       end
     end
   end

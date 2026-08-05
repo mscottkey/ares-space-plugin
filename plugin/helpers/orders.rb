@@ -122,6 +122,114 @@ module AresMUSH
       end
 
       # ---------------------------------------------------------------
+      # Issuing orders
+      # ---------------------------------------------------------------
+
+      # The single entry point for giving a ship an order, used by both
+      # the in-game commands and the web portal so the two cannot drift
+      # into behaving differently.
+      #
+      # Returns { ok:, message:, warnings: [], error: }.
+      def self.issue(ship, kind, params = {})
+        return failure(t('space.ship_destroyed_order')) if !ship.active? && "#{kind}" != "clear"
+
+        case "#{kind}"
+        when "helm"    then issue_helm(ship, params)
+        when "evade"   then issue_simple(ship, :evade)
+        when "hold"    then issue_simple(ship, :hold)
+        when "fire"    then issue_fire(ship, params)
+        when "repair"  then issue_repair(ship, params)
+        when "sweep"   then issue_sweep(ship)
+        when "clear"   then clear(ship) && success(t('space.orders_cleared', ship: ship.name))
+        else failure(t('space.unknown_order', kind: kind))
+        end
+      end
+
+      def self.issue_helm(ship, params)
+        facing = Geometry.parse_facing(ship.geometry, params[:heading])
+        if facing.nil?
+          return failure(t('space.bad_heading',
+            heading: params[:heading],
+            valid: Geometry.facing_names(ship.geometry).join(', ')))
+        end
+
+        warnings = []
+        max = Resolver.effective_max_speed(ship)
+        speed = params[:speed].nil? ? ship.max_speed : params[:speed].to_i
+        if speed > max
+          warnings << t('space.speed_capped', requested: speed, max: max)
+          speed = max
+        end
+        speed = 0 if speed < 0
+
+        turn = Geometry.turn_cost(ship.geometry, ship.facing, facing)
+        if turn > ship.agility
+          warnings << t('space.turn_will_be_limited', agility: ship.agility, needed: turn)
+        end
+
+        set_move(ship, facing, speed)
+        success(t('space.helm_ordered',
+          ship: ship.name,
+          heading: Geometry.facing_name(ship.geometry, facing),
+          speed: speed), warnings)
+      end
+
+      def self.issue_simple(ship, action)
+        if action == :evade
+          set_evade(ship)
+          success(t('space.evade_ordered', ship: ship.name))
+        else
+          set_hold(ship)
+          success(t('space.hold_ordered', ship: ship.name))
+        end
+      end
+
+      def self.issue_fire(ship, params)
+        target = Ships.find_ship_in_sector(ship.sector, params[:target])
+        return failure(t('space.target_not_found', name: params[:target])) if !target
+
+        index = params[:hardpoint].nil? ? 0 : params[:hardpoint].to_i
+        error = validate_fire(ship, target, index)
+        return failure(error) if error
+
+        hp = Ships.hardpoint(ship, index)
+        warnings = []
+        firing_arc = Geometry.arc(ship.geometry, ship.pos, ship.facing, target.pos,
+                                  SpaceConfig.arc_diagonal_bias)
+        if "#{firing_arc}" != "#{hp['arc']}"
+          warnings << t('space.arc_warning',
+            weapon: hp["weapon"], arc: hp["arc"], actual: firing_arc || "none")
+        end
+
+        add_fire(ship, target.name, index)
+        success(t('space.fire_ordered', weapon: hp["weapon"], target: target.name), warnings)
+      end
+
+      def self.issue_repair(ship, params)
+        section = "#{params[:section]}".downcase
+        if !ship.sections.key?(section)
+          return failure(t('space.no_such_section',
+            section: section, valid: ship.sections.keys.join(', ')))
+        end
+
+        set_repair(ship, section)
+        success(t('space.repair_ordered', section: section, ship: ship.name))
+      end
+
+      def self.issue_sweep(ship)
+        set_sweep(ship)
+        success(t('space.sweep_ordered', ship: ship.name))
+      end
+
+      def self.success(message, warnings = [])
+        { ok: true, message: message, warnings: warnings, error: nil }
+      end
+
+      def self.failure(error)
+        { ok: false, message: nil, warnings: [], error: error }
+      end
+
+      # ---------------------------------------------------------------
       # Readiness
       # ---------------------------------------------------------------
 

@@ -26,6 +26,8 @@ en:
     target_not_found: "No contact named '%{name}' in this sector."
     target_gone: "The target is no longer in the sector."
     target_already_down: "The target is already out of the fight."
+    not_your_ship: "You can only inspect your own ship."
+    unknown_order: "'%{kind}' isn't an order this console understands."
     combat_has_no_sector: "That engagement has no sector."
     no_active_combat: "No engagement is running in %{sector}."
     combat_already_running: "An engagement is already running in that sector."
@@ -82,6 +84,7 @@ en:
     report_repair: "  %{ship}: %{roller} restores %{amount} to the %{section} section."
     report_destroyed: "%{ship} IS DESTROYED"
     no_activity: "  (nothing happened this round)"
+    round_resolved: "Round %{round} resolved."
     resolving_without_orders: "Resolving without orders from: %{ships}"
 
     # Sectors, ships and admin

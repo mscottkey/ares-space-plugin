@@ -48,6 +48,9 @@ in your ship classes.
 
 Restart the game, or `manage/load space` if you prefer.
 
+At this point the in-game side works. The web portal is optional and
+takes a rebuild — steps 6 onward.
+
 ## 5. Smoke test
 
 ```
@@ -62,6 +65,87 @@ space/tac
 space/fire Mote Alpha=0
 space/resolve Test Sector
 ```
+
+## 6. Web portal (optional)
+
+The portal files are plain Ember — no React, no separate bundle, no
+webpack. They are **additive**: every file is new except
+`custom-routes.js` and `custom.scss`, which are the portal's sanctioned
+customization hooks. Nothing here patches a stock portal file, so an
+upstream portal upgrade won't clobber them.
+
+Copy into your portal checkout:
+
+| From | To |
+|---|---|
+| `webportal/app/routes/space-sectors.js` | `aresmush/webportal/app/routes/` |
+| `webportal/app/routes/space-tactical.js` | `aresmush/webportal/app/routes/` |
+| `webportal/app/controllers/space-tactical.js` | `aresmush/webportal/app/controllers/` |
+| `webportal/app/templates/space-sectors.hbs` | `aresmush/webportal/app/templates/` |
+| `webportal/app/templates/space-tactical.hbs` | `aresmush/webportal/app/templates/` |
+| `webportal/app/components/space-plot.js` | `aresmush/webportal/app/components/` |
+| `webportal/app/components/space-plot.hbs` | `aresmush/webportal/app/components/` |
+
+Component JS and HBS are **colocated** in `app/components/` — that is the
+current portal's layout, not `app/templates/components/`.
+
+### Register the routes
+
+`webportal/custom_files/custom-routes.js` goes to
+`aresmush/webportal/app/custom-routes.js`. **If your game already has
+routes in that file, merge rather than overwrite** — it is one shared
+hook for every plugin that adds pages. The two lines that matter:
+
+```js
+router.route('space-sectors', { path: '/space' });
+router.route('space-tactical', { path: '/space/:id' });
+```
+
+Note the file must export a **function** taking the router. (An older
+form exporting an array will throw `setupCustomRoutes is not a function`
+on current portal versions.)
+
+### Styles
+
+Append `webportal/app/styles/_space.scss` to
+`aresmush/webportal/app/styles/custom.scss`, or drop it in `styles/` and
+`@import 'space';` from custom.scss.
+
+### Navigation link (optional)
+
+In `game/config/website.yml`:
+
+```yaml
+top_navbar:
+  - title: Space
+    route: space-sectors
+```
+
+### Rebuild the portal
+
+```
+cd aresmush/webportal
+npm install      # first time only
+ember build --environment=production
+```
+
+### What the page does
+
+- `/space` lists sectors you can see — your ship's, or all of them for staff.
+- `/space/:id` is the tactical plot: an SVG grid (square or hex, matching
+  the sector), terrain, contacts drawn from **your ship's sensors only**,
+  your own ship with a facing indicator, and panels for orders.
+- Clicking a contact targets it; the weapon buttons queue fire orders.
+- Orders go through the same `Orders.issue` path the in-game commands
+  use, so the browser and the telnet console validate identically and
+  produce the same warnings.
+- When a round resolves, the report is pushed over the portal's existing
+  websocket and the plot refreshes itself. No polling.
+- Staff see a "Resolve Round" button and a list of ships still owing
+  orders.
+
+Unidentified contacts send position and nothing else — the browser never
+receives a name or hull state the crew hasn't resolved.
 
 ## Running the specs
 

@@ -17,15 +17,8 @@ module AresMUSH
       def handle
         ship = Ships.ship_for_char(enactor)
         return client.emit_failure t('space.not_crewing') if !ship
-        return client.emit_failure t('space.ship_destroyed_order') if !ship.active?
 
-        if !ship.sections.key?(self.section)
-          return client.emit_failure t('space.no_such_section',
-            section: self.section, valid: ship.sections.keys.join(', '))
-        end
-
-        Orders.set_repair(ship, self.section)
-        client.emit_success t('space.repair_ordered', section: self.section, ship: ship.name)
+        Space.emit_order_result(client, Orders.issue(ship, :repair, section: self.section))
       end
     end
   end

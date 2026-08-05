@@ -8,10 +8,8 @@ module AresMUSH
       def handle
         ship = Ships.ship_for_char(enactor)
         return client.emit_failure t('space.not_crewing') if !ship
-        return client.emit_failure t('space.ship_destroyed_order') if !ship.active?
 
-        Orders.set_evade(ship)
-        client.emit_success t('space.evade_ordered', ship: ship.name)
+        Space.emit_order_result(client, Orders.issue(ship, :evade))
       end
     end
   end
