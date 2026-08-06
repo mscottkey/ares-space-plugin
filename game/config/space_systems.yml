@@ -55,6 +55,14 @@ space:
     inner_radius: 70     # radius of ring 1
     ring_step: 46        # spacing between rings
     ring_curve: 0.92     # <1 gently compresses the outer rings inward
+    # Each body's `size` below is relative - how big this world is next to
+    # its neighbours. These two turn that into something legible on a
+    # canvas a thousand units across; raise them if the map reads small.
+    body_scale: 2.4      # multiplies a body's `size` when drawn
+    label_size: 22       # body and ship labels, in the same canvas units
+    # margin: 88         # blank border outside the last ring; defaults to
+                         # label_size * 4, which is enough for a long name
+                         # on the outermost orbit not to be clipped
 
   systems:
 

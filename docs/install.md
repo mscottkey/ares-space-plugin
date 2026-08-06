@@ -136,8 +136,13 @@ you're doing this by SFTP, copy into your portal checkout:
 | `webportal/controllers/space-tactical.js` | `aresmush/webportal/app/controllers/` |
 | `webportal/templates/space-sectors.hbs` | `aresmush/webportal/app/templates/` |
 | `webportal/templates/space-tactical.hbs` | `aresmush/webportal/app/templates/` |
+| `webportal/routes/space-system.js` | `aresmush/webportal/app/routes/` |
+| `webportal/controllers/space-system.js` | `aresmush/webportal/app/controllers/` |
+| `webportal/templates/space-system.hbs` | `aresmush/webportal/app/templates/` |
 | `webportal/components/space-plot.js` | `aresmush/webportal/app/components/` |
 | `webportal/components/space-plot.hbs` | `aresmush/webportal/app/components/` |
+| `webportal/components/space-system-map.js` | `aresmush/webportal/app/components/` |
+| `webportal/components/space-system-map.hbs` | `aresmush/webportal/app/components/` |
 
 Component JS and HBS are **colocated** in `app/components/` — that is the
 current portal's layout, not `app/templates/components/`.
@@ -151,8 +156,9 @@ overwrite** — it's one hook shared by every plugin that adds pages, and
 lines that matter:
 
 ```js
-router.route('space-sectors', { path: '/space' });
-router.route('space-tactical', { path: '/space/:id' });
+router.route('space-system', { path: '/space' });
+router.route('space-sectors', { path: '/space/sectors' });
+router.route('space-tactical', { path: '/space/sector/:id' });
 ```
 
 Note the file must export a **function** taking the router. (An older
@@ -161,9 +167,22 @@ on current portal versions.)
 
 ### Styles
 
-Append `webportal/styles/_space.scss` to
-`aresmush/webportal/app/styles/custom.scss`, or drop it in `styles/` and
-`@import 'space';` from custom.scss.
+`plugin/install` does **not** copy this file - `webportal/styles/` isn't
+part of the portal's `app/styles/`, and custom.scss is a shared file no
+installer should overwrite. Do it by hand:
+
+```
+cp webportal/styles/_space.scss aresmush/webportal/app/styles/
+echo "@import 'space';" >> aresmush/webportal/app/styles/custom.scss
+```
+
+(Or just append the file's contents to custom.scss.) Then rebuild - see
+below. The `@import` does nothing until `ember build` runs again.
+
+Skipping this no longer breaks the map: both pages draw with presentation
+attributes as a fallback, so you get a correct but plain map rather than
+a black smear. You do lose the hover states, the engagement pulse and the
+orbit animation, so it's worth doing.
 
 ### Navigation link (optional)
 
@@ -201,9 +220,15 @@ ember build --environment=production
 
 ### What the page does
 
-- `/space` lists sectors you can see — your ship's, or all of them for staff.
-- `/space/:id` is the tactical plot: an SVG grid (square or hex, matching
-  the sector), terrain, contacts drawn from **your ship's sensors only**,
+- `/space` is the system map, and it's the standard view — no ship and no
+  combat required. Star, orbital rings, worlds coloured by classification
+  with faction halos, your ship and its course, and a pulsing marker on
+  any body with a fight going on. `?system=<key>` picks another system.
+  Click a body for detail and a "set course" button.
+- `/space/sectors` lists sectors you can see — your ship's, or all of
+  them for staff.
+- `/space/sector/:id` is the tactical plot: an SVG grid (square or hex,
+  matching the sector), terrain, contacts from **your ship's sensors only**,
   your own ship with a facing indicator, and panels for orders.
 - Clicking a contact targets it; the weapon buttons queue fire orders.
 - Orders go through the same `Orders.issue` path the in-game commands

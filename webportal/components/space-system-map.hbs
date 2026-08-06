@@ -4,63 +4,92 @@
 
     <defs>
       <radialGradient id="space-star-glow">
-        <stop offset="0%" stop-color="#ffd9a0" stop-opacity="0.9" />
+        <stop offset="0%" stop-color="#ffd9a0" stop-opacity="0.85" />
+        <stop offset="60%" stop-color="#ffd9a0" stop-opacity="0.18" />
         <stop offset="100%" stop-color="#ffd9a0" stop-opacity="0" />
       </radialGradient>
     </defs>
 
+    {{! Presentation attributes below duplicate the stylesheet on purpose.
+        CSS overrides them when custom.scss is built, and they keep the map
+        readable if it isn't - an unstyled SVG circle is a solid black disc. }}
+
     <g class="space-system-orbits">
       {{#each this.orbitRings as |ring|}}
-        <circle class="space-system-orbit" cx={{ring.cx}} cy={{ring.cy}} r={{ring.r}} />
+        <circle class="space-system-orbit" cx={{ring.cx}} cy={{ring.cy}} r={{ring.r}}
+                fill="none" stroke="#b6b6c0" stroke-width="1" stroke-dasharray="3 5" />
       {{/each}}
     </g>
 
     <g class="space-system-star">
-      <circle cx={{this.system.star.x}} cy={{this.system.star.y}}
-              r={{this.system.star.radius}} fill="url(#space-star-glow)"
-              class="space-star-glow" />
+      <circle class="space-star-glow"
+              cx={{this.system.star.x}} cy={{this.system.star.y}}
+              r={{this.starGlowRadius}} fill="url(#space-star-glow)" />
       <circle class="space-star-body"
               cx={{this.system.star.x}} cy={{this.system.star.y}}
-              r={{this.system.star.radius}}>
+              r={{this.system.star.radius}}
+              fill="#fbe0b0" stroke="#e0a44a" stroke-width="1.5">
         <title>{{this.system.star.name}} ({{this.system.star.spectral}}-class)</title>
       </circle>
     </g>
 
+    {{! Four nested groups per body, and each one earns its place:
+        1. spin      - CSS animation, rotates the whole orbit about the star
+        2. start     - static transform ATTRIBUTE holding the configured angle
+        3. counter   - CSS animation cancelling the spin, so labels stay level
+        4. unstart   - cancels the start angle for the same reason
+        The start angle is an attribute rather than a negative animation-delay
+        so that bodies land in the right place even with the animation paused,
+        unsupported, or - as happens - with the stylesheet not yet built. }}
+
     <g class="space-system-bodies">
       {{#each this.bodies as |body|}}
-        <g class="space-orbit-spin" style={{body.style}}>
-          <g class="space-orbit-counter" style={{body.counterStyle}}>
-            <g class="space-system-body
-                      {{if body.selected 'is-selected'}}
-                      {{if body.engaged 'is-engaged'}}
-                      {{if body.isBelt 'is-belt'}}"
-               role="button"
-               {{action "selectBody" body}}>
+        <g class="space-orbit-spin" style={{body.spinStyle}}>
+          <g transform={{body.startTransform}}>
+            <g class="space-orbit-counter" style={{body.counterStyle}}>
+              <g transform={{body.counterTransform}}>
+                <g class="space-system-body
+                          {{if body.selected 'is-selected'}}
+                          {{if body.engaged 'is-engaged'}}
+                          {{if body.isBelt 'is-belt'}}"
+                   role="button"
+                   {{action "selectBody" body}}>
 
-              {{#if body.factionColor}}
-                <circle class="space-body-faction"
-                        cx={{body.bodyX}} cy={{body.bodyY}}
-                        r={{body.size}} stroke={{body.factionColor}} />
-              {{/if}}
+                  {{#if body.factionColor}}
+                    <circle class="space-body-faction"
+                            cx={{body.bodyX}} cy={{body.bodyY}}
+                            r={{body.haloRadius}}
+                            fill="none" stroke={{body.factionColor}}
+                            stroke-width="2" stroke-opacity="0.55" />
+                  {{/if}}
 
-              <circle class="space-body-core"
-                      cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}}
-                      fill={{body.fill}} stroke={{body.stroke}} />
+                  {{#if body.shipCount}}
+                    <circle class="space-body-ships"
+                            cx={{body.bodyX}} cy={{body.bodyY}}
+                            r={{body.shipsRadius}}
+                            fill="none" stroke="#3b7dd8" stroke-width="1"
+                            stroke-opacity="0.7" stroke-dasharray="2 2" />
+                  {{/if}}
 
-              {{#if body.engaged}}
-                <circle class="space-body-engaged"
-                        cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}} />
-              {{/if}}
+                  {{#if body.engaged}}
+                    <circle class="space-body-engaged"
+                            cx={{body.bodyX}} cy={{body.bodyY}}
+                            r={{body.engagedRadius}}
+                            fill="none" stroke="#d9534f" stroke-width="2" />
+                  {{/if}}
 
-              {{#if body.shipCount}}
-                <circle class="space-body-ships"
-                        cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}} />
-              {{/if}}
+                  <circle class="space-body-core"
+                          cx={{body.bodyX}} cy={{body.bodyY}} r={{body.size}}
+                          fill={{body.fill}} stroke={{body.stroke}}
+                          stroke-width="1.5" />
 
-              <text class="space-body-label" x={{body.bodyX}} y={{body.bodyY}}
-                    dy={{-1}} text-anchor="middle">{{body.name}}</text>
+                  <text class="space-body-label" x={{body.bodyX}} y={{body.bodyY}}
+                        dy={{body.labelDy}} text-anchor="middle"
+                        font-size={{this.labelSize}} fill="#55555f">{{body.name}}</text>
 
-              <title>{{body.name}} &mdash; {{body.classification}}, held by {{body.faction}}{{#if body.engaged}} (ENGAGED, round {{body.round}}){{/if}}</title>
+                  <title>{{body.name}} &mdash; {{body.classification}}, held by {{body.faction}}{{#if body.engaged}} (ENGAGED, round {{body.round}}){{/if}}</title>
+                </g>
+              </g>
             </g>
           </g>
         </g>
@@ -72,13 +101,16 @@
         {{#if ship.inTransit}}
           <line class="space-ship-course"
                 x1={{ship.fromX}} y1={{ship.fromY}}
-                x2={{ship.toX}} y2={{ship.toY}} />
+                x2={{ship.toX}} y2={{ship.toY}}
+                stroke="#5a8cc8" stroke-width="1" stroke-dasharray="4 4" />
         {{/if}}
         <g class="space-system-ship {{if ship.inTransit 'is-transit'}}">
-          <circle class="space-ship-marker" cx={{ship.x}} cy={{ship.y}} r={{5}}
-                  fill={{ship.color}} />
-          <text class="space-ship-label" x={{ship.x}} y={{ship.y}} dy={{-9}}
-                text-anchor="middle">{{ship.name}}</text>
+          <circle class="space-ship-marker" cx={{ship.x}} cy={{ship.y}}
+                  r={{this.shipMarkerRadius}}
+                  fill={{ship.color}} stroke="#ffffff" stroke-width="1.5" />
+          <text class="space-ship-label" x={{ship.x}} y={{ship.y}}
+                dy={{this.shipLabelDy}} text-anchor="middle"
+                font-size={{this.labelSize}} fill="#3a3a45">{{ship.name}}</text>
           <title>{{ship.name}} [{{ship.faction}}]{{#if ship.inTransit}} &rarr; {{ship.destinationName}}, ETA {{ship.eta}}{{/if}}</title>
         </g>
       {{/each}}

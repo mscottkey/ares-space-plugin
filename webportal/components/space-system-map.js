@@ -4,10 +4,18 @@ import { computed } from '@ember/object';
 // The orbital map. All geometry arrives precomputed from the server
 // (see WebData.system_map), so this component only draws and animates.
 //
-// Motion is pure CSS: each body sits in a group that rotates about the
-// star, with a negative animation-delay setting its starting angle so
-// the config's placement is preserved. A counter-rotating inner group
-// keeps labels upright.
+// Placement and motion are deliberately separated:
+//
+//   * Placement is a static SVG `transform` ATTRIBUTE carrying the body's
+//     configured angle. It needs no stylesheet and no animation support.
+//   * Motion is a CSS animation on an enclosing group, rotating the whole
+//     orbit about the star, with a counter-rotating group inside so labels
+//     stay level.
+//
+// An earlier version folded the starting angle into a negative
+// animation-delay. That was neat and wrong: with the stylesheet missing or
+// the animation paused, every body collapsed onto the +x axis, because the
+// only thing putting it on its orbit was the animation itself.
 export default Component.extend({
   tagName: '',
 
@@ -25,6 +33,25 @@ export default Component.extend({
     return `0 0 ${size} ${size}`;
   }),
 
+  starGlowRadius: computed('system.star.radius', function () {
+    return (this.get('system.star.radius') || 24) * 3;
+  }),
+
+  // Type size arrives from the server in canvas units, because the SVG
+  // scales to whatever width the column gives it - a px value in the
+  // stylesheet would be right at one width and wrong at every other.
+  labelSize: computed('system.label_size', function () {
+    return this.get('system.label_size') || 22;
+  }),
+
+  shipMarkerRadius: computed('labelSize', function () {
+    return +(this.labelSize * 0.45).toFixed(2);
+  }),
+
+  shipLabelDy: computed('labelSize', function () {
+    return -+(this.labelSize * 1.3).toFixed(2);
+  }),
+
   orbitRings: computed('system.rings.[]', 'system.center', function () {
     const center = this.get('system.center') || 0;
     return (this.get('system.rings') || []).map((r) => ({
@@ -35,19 +62,24 @@ export default Component.extend({
     }));
   }),
 
-  // Everything drawn on an orbit, with the CSS custom properties the
-  // animation needs.
-  bodies: computed('system.bodies.[]', 'selectedKey', 'animate', 'basePeriod', function () {
+  bodies: computed('system.bodies.[]', 'selectedKey', 'animate', 'basePeriod', 'labelSize', function () {
     const center = this.get('system.center') || 0;
     const base = this.basePeriod;
     const selected = this.selectedKey;
-    const animate = this.animate;
+    const labelSize = this.labelSize;
+    const paused = this.animate ? '' : 'animation-play-state:paused;';
 
     return (this.get('system.bodies') || []).map((b) => {
       // Longer orbits further out; the exponent keeps the spread modest
       // so the outer system doesn't look frozen.
       const period = Math.round(base * Math.pow(b.ring || 1, 0.75));
-      const delay = -1 * (period * ((b.angle || 0) / 360));
+      const angle = b.angle || 0;
+      const size = b.size || 6;
+
+      // Resting place along the +x axis. The static rotation below swings
+      // it round to its real angle; the animation takes it from there.
+      const bodyX = center + b.orbit_radius;
+      const bodyY = center;
 
       return {
         key: b.key,
@@ -58,7 +90,7 @@ export default Component.extend({
         classification: b.classification,
         isBelt: b.is_belt,
         radius: b.orbit_radius,
-        size: b.size,
+        size: size,
         fill: b.fill,
         stroke: b.stroke,
         faction: b.faction,
@@ -69,18 +101,26 @@ export default Component.extend({
         sectorId: b.sector_id,
         round: b.round,
         selected: `${b.key}` === `${selected}`,
-        // The body's resting place along the +x axis; the wrapper's
-        // rotation carries it to its real angle.
-        bodyX: center + b.orbit_radius,
-        bodyY: center,
-        style: `transform-origin:${center}px ${center}px;` +
-               `animation-duration:${period}s;` +
-               `animation-delay:${delay}s;` +
-               (animate ? '' : 'animation-play-state:paused;'),
-        counterStyle: `transform-origin:${center + b.orbit_radius}px ${center}px;` +
-               `animation-duration:${period}s;` +
-               `animation-delay:${delay}s;` +
-               (animate ? '' : 'animation-play-state:paused;')
+
+        bodyX: bodyX,
+        bodyY: bodyY,
+        haloRadius: +(size + labelSize * 0.18).toFixed(2),
+        shipsRadius: +(size + labelSize * 0.36).toFixed(2),
+        engagedRadius: +(size + labelSize * 0.54).toFixed(2),
+        labelDy: -+(size + labelSize * 0.85).toFixed(2),
+
+        // Rotates the orbit about the star.
+        spinStyle:
+          `transform-origin:${center}px ${center}px;` +
+          `animation-duration:${period}s;` + paused,
+        // The configured starting angle, independent of any animation.
+        startTransform: `rotate(${angle} ${center} ${center})`,
+        // Cancels the spin so the label stays level...
+        counterStyle:
+          `transform-origin:${bodyX}px ${bodyY}px;` +
+          `animation-duration:${period}s;` + paused,
+        // ...and this cancels the starting angle, for the same reason.
+        counterTransform: `rotate(${-angle} ${bodyX} ${bodyY})`
       };
     });
   }),

@@ -33,10 +33,33 @@ module AresMUSH
 
       # Size of the whole map, so the SVG viewBox fits the outermost ring
       # plus a margin for labels.
+      #
+      # The margin defaults off the label size rather than a fixed number:
+      # a body sitting on the outermost ring centres its name on itself,
+      # so half of a long one ("Outer Belt", "Wreck of the Concord") hangs
+      # outside the ring and gets clipped by the viewBox otherwise.
       def self.canvas_size(rings, layout = {})
         outer = ring_radius(rings.to_i + 1, layout)
-        margin = (layout["margin"] || 40).to_f
+        margin = (layout["margin"] || label_size(layout) * 4).to_f
         ((outer + margin) * 2).round
+      end
+
+      # Drawn radius of a body.
+      #
+      # `size` in the config is a relative figure - how big this world is
+      # next to its neighbours - while a twelve-ring system is a canvas
+      # over a thousand units across. Drawing those numbers literally
+      # gives specks, so `body_scale` converts relative size into
+      # something legible without anyone retuning every world by hand.
+      def self.body_radius(size, layout = {})
+        scale = (layout["body_scale"] || 2.4).to_f
+        [ size.to_f * scale, 2.0 ].max.round(2)
+      end
+
+      # Label type size, in canvas units rather than pixels - the SVG
+      # scales to whatever width it's given, so the two aren't the same.
+      def self.label_size(layout = {})
+        (layout["label_size"] || 22).to_f
       end
 
       # How long a trip between two rings takes, in seconds.

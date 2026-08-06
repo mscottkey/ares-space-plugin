@@ -110,10 +110,17 @@
 // =====================================================================
 // System map - the standard view of space
 // =====================================================================
-// Light, airy, hairline orbits. Motion is pure CSS: a wrapper group
-// rotates about the star and a counter-rotating inner group keeps the
-// label upright. Negative animation-delay sets each body's starting
-// angle, so the placement configured in space_systems.yml is preserved.
+// Light, airy, hairline orbits.
+//
+// Motion only. Where a body sits is set by a static SVG transform
+// attribute in the template, so the map is correct even if this file
+// never gets built into custom.scss. What lives here is the rotation
+// about the star plus the counter-rotation that keeps labels level.
+//
+// Every rule below is also mirrored as a presentation attribute in
+// space-system-map.hbs. CSS wins wherever both apply; the attributes
+// only matter on an unstyled build, where they stop the SVG defaulting
+// to solid black fills.
 
 .space-system-wrapper {
   width: 100%;
@@ -186,16 +193,15 @@
     fill: none;
     stroke-width: 2;
     stroke-opacity: 0.55;
-    transform-box: fill-box;
-    r: 1;
   }
 
+  // Offset comes from the `dy` attribute, not a transform: a CSS transform
+  // here would be undone by the counter-rotation group above it. Type size
+  // is an attribute too - it has to be in canvas units, and a px value
+  // here would silently override the one the server sent.
   .space-body-label {
-    font-size: 11px;
     fill: #55555f;
     pointer-events: none;
-    dominant-baseline: auto;
-    transform: translateY(-0.9em);
   }
 
   &.is-belt .space-body-core {
@@ -247,8 +253,8 @@
   stroke-width: 1.5;
 }
 
+// No font-size here either - see .space-body-label above.
 .space-ship-label {
-  font-size: 10px;
   font-weight: 600;
   fill: #3a3a45;
   pointer-events: none;

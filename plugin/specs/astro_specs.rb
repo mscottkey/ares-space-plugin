@@ -56,6 +56,44 @@ module AresMUSH
           outer = Astro.ring_radius(11, layout)
           expect(size).to be >= (outer * 2)
         end
+
+        # A body on the last ring centres its name on itself, so half a
+        # long one hangs outside the ring. Without margin it gets clipped.
+        it "defaults the margin to something a long label fits inside" do
+          size = Astro.canvas_size(10, layout.merge("label_size" => 22))
+          outer = Astro.ring_radius(11, layout)
+          expect((size / 2.0) - outer).to be >= 80
+        end
+
+        it "honours an explicit margin" do
+          size = Astro.canvas_size(10, layout.merge("margin" => 10))
+          outer = Astro.ring_radius(11, layout)
+          expect(size).to eq ((outer + 10) * 2).round
+        end
+      end
+
+      describe :body_radius do
+        it "scales the config's relative size up to something drawable" do
+          expect(Astro.body_radius(6, "body_scale" => 2.5)).to eq 15.0
+        end
+
+        it "keeps the smallest bodies visible" do
+          expect(Astro.body_radius(0, "body_scale" => 2.5)).to eq 2.0
+        end
+
+        it "has a usable default" do
+          expect(Astro.body_radius(6)).to be > 6
+        end
+      end
+
+      describe :label_size do
+        it "falls back to a default" do
+          expect(Astro.label_size).to be > 0
+        end
+
+        it "takes the configured value" do
+          expect(Astro.label_size("label_size" => 30)).to eq 30.0
+        end
       end
 
       describe :travel_seconds do

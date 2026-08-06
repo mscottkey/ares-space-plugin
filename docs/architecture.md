@@ -338,6 +338,51 @@ Ship classes also gained a default `faction`, so a spawned hull reads as
 UCC or Swarm on the plot instead of "Unknown" sitting confusingly next
 to genuinely unidentified contacts.
 
+### 12a. The system map, found the same way
+
+The first build of the orbital map reached the browser as a black disc
+with every world stacked on a horizontal line. One mistake caused all of
+it: **the map's placement depended on its stylesheet.**
+
+Each body was drawn at its resting position on the +x axis, and the only
+thing that swung it round to its configured angle was a CSS
+`animation-delay`. So with `_space.scss` not yet built into the portal's
+`custom.scss`, nothing had an angle - and unstyled SVG `<circle>` fills
+solid black, which is what the outermost orbit ring became.
+
+The fix is a separation that should have been there from the start:
+
+- **Placement is a static SVG `transform` attribute.** It needs no
+  stylesheet, no animation support, and survives the pause button.
+- **Motion is CSS**, on a group *enclosing* the placement (CSS
+  `transform` beats the `transform` attribute on the same element, so
+  they have to be different elements), with a counter-rotating group
+  inside to keep labels level.
+- **Every visual rule is mirrored as a presentation attribute** in the
+  template. CSS wins wherever both apply, so the stylesheet still
+  governs; the attributes only decide what an unstyled build looks like,
+  and they turn "unreadable" into "plain".
+
+Two smaller things fell out of finally looking at it rendered:
+
+- `.space-body-faction` carried `r: 1`. In SVG2 `r` is a CSS property,
+  and CSS beats the presentation attribute - so every faction halo was
+  collapsing to a one-unit dot. Deleted.
+- Sizes were being drawn literally. A body's `size` in the config is
+  *relative* (how big this world is next to its neighbours), but the
+  canvas of a twelve-ring system is ~1400 units across, so a `size: 6`
+  world rendered about three pixels wide. `body_scale` and `label_size`
+  in `orbit_layout` convert relative figures into legible ones, and the
+  canvas margin now derives from `label_size` so a long name on the
+  outermost orbit isn't clipped by the viewBox.
+
+None of this needed a game server. It needed the SVG rendered in a real
+browser: the payload from `WebData.system_map` fed through the markup the
+template emits, loaded in headless Chromium both with and without the
+stylesheet, then measured - distinct positions, distance from the star
+holding constant under animation, label rotation staying at zero. Those
+three measurements would have failed loudly on the original build.
+
 ## 13. Still to do
 
 - Carrier operations: launching and recovering fighters from the
