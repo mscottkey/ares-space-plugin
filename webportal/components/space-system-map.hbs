@@ -50,7 +50,14 @@
         for why its counter-transform has to undo two angles, not one. }}
 
     <g class="space-system-bodies">
-      {{#each this.bodies as |body|}}
+      {{! key="key" matters here, not just for perf: `bodies` is a
+          computed() keyed to selectedKey, so every click on a body
+          returns a brand-new array of brand-new objects. Without an
+          explicit key, {{#each}} matches by identity, so a click would
+          otherwise tear down and rebuild the WHOLE svg body tree -
+          restarting every element's CSS animation from its 0% keyframe
+          on every single click. }}
+      {{#each this.bodies key="key" as |body|}}
         <g class="space-orbit-spin" style={{body.spinStyle}}>
           <g transform={{body.startTransform}}>
             <g class="space-orbit-counter" style={{body.counterStyle}}>
@@ -100,7 +107,7 @@
             </g>
           </g>
 
-          {{#each body.moons as |moon|}}
+          {{#each body.moons key="key" as |moon|}}
             <g transform={{moon.localTransform}}>
               <g class="space-orbit-counter" style={{moon.counterStyle}}>
                 <g transform={{moon.counterTransform}}>
