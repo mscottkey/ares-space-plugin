@@ -197,16 +197,33 @@ module AresMUSH
 
       def self.body_map_entry(system_key, body_data, center, layout)
         key = body_data["key"]
-        ring = Systems.effective_ring(system_key, body_data)
-        radius = Astro.ring_radius(ring, layout)
         angle = (body_data["angle"] || 0).to_f
 
-        # A moon rides its parent's orbit, offset a little way out.
         if body_data["parent"]
-          radius += (body_data["moon_orbit"] || 18).to_f
+          # A moon's `angle` is around its PARENT, not the star - it is
+          # not a second, independent bearing from the star. Getting this
+          # wrong was a real bug: a moon at ring 3 with its own angle of
+          # 210 while its parent sat at 62 rendered nowhere near its
+          # parent, out past bodies on farther rings entirely by
+          # coincidence of the numbers involved.
+          #
+          # So `ring`/`orbit_radius` here describe the moon's own small
+          # orbit (radius = moon_orbit, around the parent's position),
+          # not a radius from the star.
+          parent_data = Systems.body(system_key, body_data["parent"]) || {}
+          ring = Systems.effective_ring(system_key, parent_data)
+          parent_radius = Astro.ring_radius(ring, layout)
+          parent_angle = (parent_data["angle"] || 0).to_f
+          parent_x, parent_y = Astro.position(center, center, parent_radius, parent_angle)
+
+          orbit_radius = (body_data["moon_orbit"] || 18).to_f
+          x, y = Astro.position(parent_x, parent_y, orbit_radius, angle)
+        else
+          ring = Systems.effective_ring(system_key, body_data)
+          orbit_radius = Astro.ring_radius(ring, layout)
+          x, y = Astro.position(center, center, orbit_radius, angle)
         end
 
-        x, y = Astro.position(center, center, radius, angle)
         klass = Systems.body_class(body_data["classification"])
         faction = Systems.controlling_faction(system_key, body_data)
         engagement = Systems.engagement_at(system_key, key)
@@ -221,7 +238,7 @@ module AresMUSH
           parent: body_data["parent"],
           ring: ring,
           angle: angle,
-          orbit_radius: radius.round(2),
+          orbit_radius: orbit_radius.round(2),
           x: x,
           y: y,
           size: Astro.body_radius(body_data["size"] || 6, layout),

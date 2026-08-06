@@ -138,6 +138,52 @@ module AresMUSH
         end
       end
 
+      describe :system_map do
+        # Real config (game/config/space_systems.yml), not a fixture -
+        # this is the system the bug was reported against, moon and all.
+        let(:map) { WebData.system_map("covenant_reach") }
+        let(:by_key) { map[:bodies].each_with_object({}) { |b, h| h[b[:key]] = b } }
+
+        it "puts a moon within its own orbit distance of its parent, not the star" do
+          parent = by_key["p3"]
+          moon = by_key["p3_moon"]
+
+          dist = Math.hypot(parent[:x] - moon[:x], parent[:y] - moon[:y])
+
+          expect(dist).to be_within(0.1).of(moon[:orbit_radius])
+        end
+
+        it "does not place a moon by its own independent bearing from the star" do
+          parent = by_key["p3"]
+          moon = by_key["p3_moon"]
+
+          # The regression: moon config sets angle: 210 against the
+          # parent's angle: 62. Positioned from the star at that angle,
+          # the moon lands far outside its parent's own orbit - farther
+          # from the star than the parent, in this system's numbers.
+          dist_from_star = Math.hypot(map[:center] - moon[:x], map[:center] - moon[:y])
+          parent_dist_from_star = Math.hypot(map[:center] - parent[:x], map[:center] - parent[:y])
+
+          expect(dist_from_star).to be < parent_dist_from_star + moon[:orbit_radius] + 0.1
+        end
+
+        it "gives a moon its parent's ring rather than a radius of its own" do
+          parent = by_key["p3"]
+          moon = by_key["p3_moon"]
+
+          expect(moon[:ring]).to eq parent[:ring]
+        end
+
+        it "falls back to a near-star position for a moon with a bad parent key" do
+          data = WebData.body_map_entry("covenant_reach",
+            { "key" => "orphan", "parent" => "nonexistent", "angle" => 45, "moon_orbit" => 10 },
+            map[:center], Systems.orbit_layout)
+
+          expect(data[:x]).to be_a(Float)
+          expect(data[:y]).to be_a(Float)
+        end
+      end
+
       describe :sector_summary do
         it "counts live ships and reports the engagement state" do
           spawn("Talon One", "Talon", x: 1, y: 1)

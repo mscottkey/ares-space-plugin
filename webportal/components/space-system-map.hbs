@@ -40,7 +40,14 @@
         4. unstart   - cancels the start angle for the same reason
         The start angle is an attribute rather than a negative animation-delay
         so that bodies land in the right place even with the animation paused,
-        unsupported, or - as happens - with the stylesheet not yet built. }}
+        unsupported, or - as happens - with the stylesheet not yet built.
+
+        A moon's <g> sits INSIDE its parent's spin+start pair rather than
+        as a sibling body with a star-relative angle of its own - that
+        nesting is what makes it ride along with the parent instead of
+        tracing its own independent circle at a bearing that has nothing
+        to do with where the parent actually is. See space-system-map.js
+        for why its counter-transform has to undo two angles, not one. }}
 
     <g class="space-system-bodies">
       {{#each this.bodies as |body|}}
@@ -92,6 +99,55 @@
               </g>
             </g>
           </g>
+
+          {{#each body.moons as |moon|}}
+            <g transform={{moon.localTransform}}>
+              <g class="space-orbit-counter" style={{moon.counterStyle}}>
+                <g transform={{moon.counterTransform}}>
+                  <g class="space-system-body
+                            {{if moon.selected 'is-selected'}}
+                            {{if moon.engaged 'is-engaged'}}"
+                     role="button"
+                     {{action "selectBody" moon}}>
+
+                    {{#if moon.factionColor}}
+                      <circle class="space-body-faction"
+                              cx={{moon.bodyX}} cy={{moon.bodyY}}
+                              r={{moon.haloRadius}}
+                              fill="none" stroke={{moon.factionColor}}
+                              stroke-width="2" stroke-opacity="0.55" />
+                    {{/if}}
+
+                    {{#if moon.shipCount}}
+                      <circle class="space-body-ships"
+                              cx={{moon.bodyX}} cy={{moon.bodyY}}
+                              r={{moon.shipsRadius}}
+                              fill="none" stroke="#3b7dd8" stroke-width="1"
+                              stroke-opacity="0.7" stroke-dasharray="2 2" />
+                    {{/if}}
+
+                    {{#if moon.engaged}}
+                      <circle class="space-body-engaged"
+                              cx={{moon.bodyX}} cy={{moon.bodyY}}
+                              r={{moon.engagedRadius}}
+                              fill="none" stroke="#d9534f" stroke-width="2" />
+                    {{/if}}
+
+                    <circle class="space-body-core"
+                            cx={{moon.bodyX}} cy={{moon.bodyY}} r={{moon.size}}
+                            fill={{moon.fill}} stroke={{moon.stroke}}
+                            stroke-width="1.5" />
+
+                    <text class="space-body-label" x={{moon.bodyX}} y={{moon.bodyY}}
+                          dy={{moon.labelDy}} text-anchor="middle"
+                          font-size={{this.labelSize}} fill="#55555f">{{moon.name}}</text>
+
+                    <title>{{moon.name}} &mdash; {{moon.classification}}, held by {{moon.faction}}{{#if moon.engaged}} (ENGAGED, round {{moon.round}}){{/if}}</title>
+                  </g>
+                </g>
+              </g>
+            </g>
+          {{/each}}
         </g>
       {{/each}}
     </g>

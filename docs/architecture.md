@@ -383,6 +383,47 @@ stylesheet, then measured - distinct positions, distance from the star
 holding constant under animation, label rotation staying at zero. Those
 three measurements would have failed loudly on the original build.
 
+### 12b. A moon isn't a second planet
+
+Reported from a real screenshot: P3's moon, Sentinel, rendered on the far
+side of the map from P3 - "a moon can't be further away than other
+planets."
+
+The cause was that a moon's position was computed exactly like a
+planet's: its own ring, its own independently configured `angle`, both
+measured from the star. `Sentinel` (angle 210) next to `P3` (angle 62)
+put the two at a shared radius but opposite bearings - nowhere near each
+other, and past several outer-ring planets by coincidence of the numbers
+involved. "Rides its parent's orbit" was a comment above code that didn't
+do that.
+
+Fixed on both sides of the wire, because the front end doesn't read the
+server's `x`/`y` for body placement (see 12a) - it recomputes position
+itself from `orbit_radius` and `angle`, so a Ruby-only fix would have
+left the actual map unchanged:
+
+- **`WebData.body_map_entry`** now computes a moon's position from its
+  *parent's* true position plus a (`moon_orbit`, `angle`) offset, where
+  `angle` is relative to the parent. `orbit_radius` for a moon becomes
+  that offset distance, not a radius from the star. This is what the
+  detail panel and ship-transit lines read.
+- **`space-system-map.js`/`.hbs`** nest a moon's SVG group *inside* its
+  parent's rotating group, rather than drawing it as a sibling with a
+  star-relative angle of its own. This is load-bearing, not cosmetic:
+  rotations compose by adding angles regardless of pivot, so a moon that
+  bypasses its parent's own counter-rotation group has to undo *both*
+  the parent's static angle and its own in a single combined
+  counter-transform, or the label picks up the parent's tilt. A lone
+  body only ever has one angle to undo.
+
+Verified the same way as 12a - rendering, not reading. The nested markup
+was fed through Chromium with the animation running (5s period rather
+than the real ~4-6 minutes, to observe multiple phases quickly): a moon's
+on-screen distance from its parent measured 10.3px at three points across
+the rotation, never drifting, with label tilt at 0.00° throughout. 159
+specs pass (4 new), including one that pins the exact regression - a
+moon's own angle no longer decides where it lands relative to the star.
+
 ## 13. Still to do
 
 - Carrier operations: launching and recovering fighters from the

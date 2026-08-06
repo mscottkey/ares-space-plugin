@@ -13,6 +13,8 @@ require_relative "../helpers/sensors"
 require_relative "../helpers/resolver"
 require_relative "../helpers/engagements"
 require_relative "../helpers/display"
+require_relative "../helpers/systems"
+require_relative "../helpers/system_display"
 require_relative "../helpers/web_data"
 
 # Must come last: it points the lookups at the in-memory world.
