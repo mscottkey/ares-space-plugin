@@ -1,4 +1,18 @@
-// Append to aresmush/webportal/app/styles/custom.scss (or import it).
+// Game styles, not portal styles. This file belongs in game/styles/ and
+// is pulled in with one line in game/styles/custom_style.scss:
+//
+//     @import "space";
+//
+// Ares compiles engine/styles/ares.scss - which ends with
+// @import "custom_style" - through SassC with game/styles on the load
+// path, and writes game/styles/ares.css. The portal's index.html links
+// that file last, after its own bundle, so these rules win without
+// needing !important.
+//
+// Two useful consequences: `load styles` in-game rebuilds it, so a CSS
+// change needs no ember build; and an admin can edit the import from the
+// portal under Theme -> Custom Styles.
+//
 // Colours deliberately inherit from the portal theme where possible so
 // this doesn't fight whatever skin the game is using.
 

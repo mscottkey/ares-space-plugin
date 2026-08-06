@@ -346,9 +346,9 @@ it: **the map's placement depended on its stylesheet.**
 
 Each body was drawn at its resting position on the +x axis, and the only
 thing that swung it round to its configured angle was a CSS
-`animation-delay`. So with `_space.scss` not yet built into the portal's
-`custom.scss`, nothing had an angle - and unstyled SVG `<circle>` fills
-solid black, which is what the outermost orbit ring became.
+`animation-delay`. So with `_space.scss` not compiled into the page,
+nothing had an angle - and unstyled SVG `<circle>` fills solid black,
+which is what the outermost orbit ring became.
 
 The fix is a separation that should have been there from the start:
 

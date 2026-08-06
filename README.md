@@ -67,18 +67,23 @@ plugin/
   templates/          ERB for the console and ship status
   web/                request handlers (tactical, sectors, ship, order, resolve)
   specs/              125 specs + in-memory harness
-game/config/          space.yml, space_ships.yml, space_weapons.yml
+game/                 copied into your game/ by plugin/install
+  config/             space.yml, space_ships.yml, space_weapons.yml,
+                      space_systems.yml
+  styles/             _space.scss - GAME styles, not portal styles; Ares
+                      compiles these and the portal links the result last
 webportal/            mirrors ares-webportal's app/ layout, so
                       plugin/install can copy it straight across
-  routes/             space-sectors, space-tactical
-  controllers/        space-tactical
-  templates/          the two pages
-  components/         space-plot (SVG, square + hex), colocated js + hbs
-  styles/             _space.scss
+  routes/             space-system, space-sectors, space-tactical
+  controllers/        space-system, space-tactical
+  templates/          the three pages
+  components/         space-plot (tactical SVG, square + hex) and
+                      space-system-map (orbital SVG), colocated js + hbs
 custom_files/         custom-routes.js (portal's shared route hook -
                       outside webportal/ so the installer never
                       auto-copies it; always merge by hand)
-tools/demo.rb         scripted engagement, no server needed
+tools/                demo.rb, and finish-portal-install.sh for the two
+                      shared hook files the installer can't touch
 ```
 
 ## License

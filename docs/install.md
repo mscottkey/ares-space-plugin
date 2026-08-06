@@ -12,8 +12,8 @@ plugin/install https://github.com/mscottkey/ares-space-plugin
 This clones the repo on the server and copies:
 
 - `plugin/` → `plugins/space/`
-- `game/*` → `game/` (merges `space.yml`, `space_ships.yml`,
-  `space_weapons.yml` into your existing `game/config/`)
+- `game/*` → `game/` (the `space*.yml` files merge into your existing
+  `game/config/`, and `_space.scss` into `game/styles/`)
 - `webportal/*` → `<your ares-webportal checkout>/app/` — only if that
   checkout exists on the server at the path configured in
   `website.website_code_path`; otherwise it warns and skips
@@ -25,9 +25,12 @@ for a first install.
 plugin name resolves to `space`), and `git` reachable from the server.
 
 **Not handled automatically — see "Web portal" below:**
+- `game/styles/custom_style.scss` needs one `@import "space";` line, since
+  it's the game's shared CSS hook. Without it the stylesheet is copied but
+  never compiled, and the map draws plain and motionless.
 - `custom_files/custom-routes.js` needs manual merging, since it's a
   hook shared by every plugin that adds portal pages.
-- Rebuilding the Ember portal (`ember build`).
+- Rebuilding the Ember portal (`ember build`), once, for the routes.
 
 **Updating an existing install:** re-running `plugin/install` refreshes
 `plugins/space/` but does **not** re-copy `game/config/space*.yml` once
@@ -51,15 +54,18 @@ matching the upcased folder name against `AresMUSH` constants, so a
 folder named `space_combat` would look for `AresMUSH::SPACE_COMBAT` and
 fail at boot with `SystemNotFoundException`.
 
-## 2. Config files
-
-Copy the three config files into your game config:
+## 2. Config and style files
 
 ```
 cp game/config/space.yml         /path/to/aresmush/game/config/
 cp game/config/space_ships.yml   /path/to/aresmush/game/config/
 cp game/config/space_weapons.yml /path/to/aresmush/game/config/
+cp game/config/space_systems.yml /path/to/aresmush/game/config/
+cp game/styles/_space.scss       /path/to/aresmush/game/styles/
 ```
+
+The stylesheet needs one line in `game/styles/custom_style.scss` to be
+compiled at all — see "Styles" under "Web portal" below.
 
 ## 3. Match the station skills to your game
 
@@ -126,28 +132,29 @@ sits outside `webportal/` at the repo root for exactly the opposite
 reason — it's never auto-copied, because it holds files meant to be
 merged by hand.
 
-**`plugin/install` copies all of it** — routes, controllers, templates,
-colocated components, and `_space.scss` — straight into the portal's
-`app/`, provided it can find your checkout at `website.website_code_path`.
+**`plugin/install` copies all of it**: `webportal/*` (routes,
+controllers, templates, colocated components) into the portal's `app/`,
+and `game/*` — including `game/styles/_space.scss` — into your `game/`.
 There is no file to move by hand.
 
-What it can't do is touch the two files that belong to the *portal*
-rather than to this plugin, because every plugin adding pages shares
-them:
+What it can't touch are the two hook files owned by the game rather than
+by this plugin, because every plugin adding pages shares them:
 
 | File | Why it's left alone |
 |---|---|
-| `app/custom-routes.js` | one hook, many plugins — overwriting it deletes someone else's pages |
-| `app/styles/custom.scss` | likewise, and `_space.scss` does nothing until something imports it |
+| `game/styles/custom_style.scss` | the game's CSS hook; `_space.scss` is a partial and compiles only once something imports it |
+| `<portal>/app/custom-routes.js` | one hook, many plugins — overwriting it deletes someone else's pages |
 
-Both are one line each and covered below. Or do them at once:
+Both are one line each and covered below. Or do them at once — note this
+takes the **aresmush root**, and finds the portal itself from
+`website_code_path`:
 
 ```
-bash tools/finish-portal-install.sh /path/to/aresmush/webportal
+bash tools/finish-portal-install.sh /path/to/aresmush
 ```
 
-It also checks that `plugin/install`'s copy actually landed, and is safe
-to re-run.
+It also warns if `plugin/install`'s copy didn't land, and is safe to
+re-run.
 
 ### Register the routes
 
@@ -169,22 +176,44 @@ on current portal versions.)
 
 ### Styles
 
-`plugin/install` already put `_space.scss` in `app/styles/`. Sass ignores
-a leading-underscore partial unless something imports it, so add one line
-to `app/styles/custom.scss`:
+**These are game styles, not portal styles.** `ares-webportal` has no
+customization hook in `app/styles/` — its `app.scss` `@use`s a fixed list
+and nothing else gets compiled. The hook is on the game side:
+
+- Ares compiles `engine/styles/ares.scss`, which ends with
+  `@import "custom_style"`, through SassC with `game/styles` on the load
+  path, writing `game/styles/ares.css`.
+- The portal's `index.html` links `/game/styles/ares.css` **last**, after
+  its own bundle — so these rules win without needing `!important`.
+
+`plugin/install` already put `_space.scss` in `game/styles/`. Sass skips a
+leading-underscore partial unless something imports it, so add one line to
+`game/styles/custom_style.scss`:
 
 ```
-echo "@import 'space';" >> aresmush/webportal/app/styles/custom.scss
+echo '@import "space";' >> aresmush/game/styles/custom_style.scss
 ```
 
-Then rebuild — see below. The `@import` does nothing until `ember build`
-runs again.
+Then, in-game:
 
-This is the step that's easy to miss, because nothing errors without it.
-It no longer breaks the map: both pages carry presentation attributes as
-a fallback, so an unstyled build draws a correct-but-plain map rather
-than a black smear. You do lose the hover states, the engagement pulse
-and the orbit animation, so it's worth doing.
+```
+load styles
+```
+
+That's the whole thing — **no `ember build` for CSS.** `load styles` calls
+`Website.rebuild_css`, and the browser picks it up on a hard refresh. An
+admin can also edit that import from the portal under *Theme → Custom
+Styles*.
+
+This step is easy to miss because nothing errors without it. It no longer
+breaks the map — both pages carry presentation attributes as a fallback,
+so an unstyled build draws a correct-but-plain map rather than a black
+smear — but you lose the hover states, the engagement pulse and the orbit
+animation, which is what "the orbits don't move" looks like.
+
+> If you followed an earlier version of these instructions and created
+> `<portal>/app/styles/_space.scss` and `app/styles/custom.scss`, delete
+> both. Nothing compiles them; they were the wrong hook.
 
 ### Navigation link (optional)
 

@@ -1,62 +1,82 @@
 #!/bin/bash
-# The two portal steps `plugin/install` deliberately does not do.
+# The two steps `plugin/install` deliberately does not do.
 #
-#   bash tools/finish-portal-install.sh /path/to/aresmush/webportal
+#   bash tools/finish-portal-install.sh /path/to/aresmush
 #
-# plugin/install copies webportal/* straight into the portal's app/, so
-# the routes, controllers, templates, components and _space.scss are all
-# already in place. What it leaves alone are the two files that belong to
-# the portal rather than to this plugin, and that every plugin adding
-# pages has to share:
+# plugin/install copies game/* into game/ and webportal/* into the
+# portal's app/, so the config, the stylesheet, the routes, controllers,
+# templates and components are all already in place. What it leaves alone
+# are the two files owned by the game rather than by this plugin, which
+# every plugin adding pages has to share:
 #
-#   app/custom-routes.js    - one hook, many plugins; overwriting it
-#                             would delete someone else's pages
-#   app/styles/custom.scss  - likewise, and _space.scss does nothing at
-#                             all until something imports it
+#   game/styles/custom_style.scss  - the game's custom CSS hook; the
+#                                    shipped _space.scss is a Sass
+#                                    partial and compiles only when
+#                                    something imports it
+#   <portal>/app/custom-routes.js  - one hook, many plugins; overwriting
+#                                    it deletes someone else's pages
 #
 # Safe to re-run: both steps are skipped if already done.
 set -euo pipefail
 
-PORTAL="${1:-}"
+ARES="${1:-}"
 
-if [ -z "$PORTAL" ]; then
-  echo "usage: bash tools/finish-portal-install.sh /path/to/aresmush/webportal" >&2
+if [ -z "$ARES" ]; then
+  echo "usage: bash tools/finish-portal-install.sh /path/to/aresmush" >&2
   exit 1
 fi
-if [ ! -d "$PORTAL/app" ]; then
-  echo "error: $PORTAL/app does not exist - is that the webportal checkout?" >&2
+if [ ! -d "$ARES/game/styles" ]; then
+  echo "error: $ARES/game/styles not found - is that the aresmush root?" >&2
   exit 1
-fi
-
-# Sanity check that plugin/install actually landed, so a missing page
-# later isn't mistaken for a problem with these two steps.
-missing=0
-for f in app/templates/space-system.hbs \
-         app/components/space-system-map.js \
-         app/components/space-system-map.hbs \
-         app/styles/_space.scss; do
-  if [ ! -f "$PORTAL/$f" ]; then
-    echo "!! missing: $f"
-    missing=1
-  fi
-done
-if [ "$missing" = "1" ]; then
-  echo
-  echo "Those come from plugin/install. If they're absent it either hasn't"
-  echo "run, or it couldn't find this checkout at website.website_code_path"
-  echo "and skipped the webportal copy. Re-run it, or copy webportal/* from"
-  echo "the repo into $PORTAL/app/ by hand."
-  echo
 fi
 
 # ---------------------------------------------------------------------
-# 1. Routes
+# 1. Styles.
+#
+# These are GAME styles, not portal styles. Ares compiles
+# engine/styles/ares.scss (which ends with @import "custom_style") with
+# game/styles on the load path, and the portal links the result last.
 # ---------------------------------------------------------------------
-ROUTES="$PORTAL/app/custom-routes.js"
+CUSTOM="$ARES/game/styles/custom_style.scss"
 
-if [ ! -f "$ROUTES" ]; then
-  echo "custom-routes.js: creating (no other plugin has claimed it)"
-  cat > "$ROUTES" <<'EOF'
+if [ ! -f "$ARES/game/styles/_space.scss" ]; then
+  echo "!! game/styles/_space.scss is missing - plugin/install hasn't run,"
+  echo "!! or ran before this file was added. Re-run it, or copy"
+  echo "!! game/styles/_space.scss from the repo by hand."
+  echo
+fi
+
+touch "$CUSTOM"
+if grep -qE '@import\s+["'"'"']space["'"'"']' "$CUSTOM"; then
+  echo "custom_style.scss: already imports 'space', left alone"
+else
+  printf '\n@import "space";\n' >> "$CUSTOM"
+  echo "custom_style.scss: added @import \"space\""
+fi
+
+# ---------------------------------------------------------------------
+# 2. Routes. These really are portal files, so find the checkout the
+#    same way plugin/install does.
+# ---------------------------------------------------------------------
+PORTAL="$(grep -E '^\s*website_code_path:' "$ARES/game/config/website.yml" 2>/dev/null \
+          | head -1 | sed -E 's/.*website_code_path:\s*//; s/^["'"'"']//; s/["'"'"']\s*$//' || true)"
+
+if [ -z "$PORTAL" ] || [ ! -d "$PORTAL/app" ]; then
+  echo
+  echo "Could not find the portal checkout (website_code_path in"
+  echo "game/config/website.yml). Skipping the route step - add these"
+  echo "three lines to <portal>/app/custom-routes.js by hand:"
+  echo
+  echo "    router.route('space-system',   { path: '/space' });"
+  echo "    router.route('space-sectors',  { path: '/space/sectors' });"
+  echo "    router.route('space-tactical', { path: '/space/sector/:id' });"
+  echo
+else
+  ROUTES="$PORTAL/app/custom-routes.js"
+
+  if [ ! -f "$ROUTES" ]; then
+    echo "custom-routes.js:  creating (no other plugin has claimed it)"
+    cat > "$ROUTES" <<'EOF'
 // Registers this game's extra portal pages. Shared by every plugin that
 // adds one, so merge into it rather than replacing it.
 export default function (router) {
@@ -68,37 +88,36 @@ export default function (router) {
   router.route('space-tactical', { path: '/space/sector/:id' });
 }
 EOF
-elif grep -q "space-system" "$ROUTES"; then
-  echo "custom-routes.js: space routes already present, left alone"
-else
-  echo
-  echo "custom-routes.js: exists and has no space routes - MERGE BY HAND."
-  echo "Add these inside the setupCustomRoutes / exported function body:"
-  echo
-  echo "    router.route('space-system',   { path: '/space' });"
-  echo "    router.route('space-sectors',  { path: '/space/sectors' });"
-  echo "    router.route('space-tactical', { path: '/space/sector/:id' });"
-  echo
-  echo "Current contents, for reference:"
-  echo "---------------------------------------------------------------"
-  cat "$ROUTES"
-  echo "---------------------------------------------------------------"
-  echo
-fi
+  elif grep -q "space-system" "$ROUTES"; then
+    echo "custom-routes.js:  space routes already present, left alone"
+  else
+    echo
+    echo "custom-routes.js:  exists and has no space routes - MERGE BY HAND."
+    echo "Add these inside the exported function's body:"
+    echo
+    echo "    router.route('space-system',   { path: '/space' });"
+    echo "    router.route('space-sectors',  { path: '/space/sectors' });"
+    echo "    router.route('space-tactical', { path: '/space/sector/:id' });"
+    echo
+    echo "Current contents, for reference:"
+    echo "---------------------------------------------------------------"
+    cat "$ROUTES"
+    echo "---------------------------------------------------------------"
+    echo
+  fi
 
-# ---------------------------------------------------------------------
-# 2. Styles
-# ---------------------------------------------------------------------
-CUSTOM="$PORTAL/app/styles/custom.scss"
-touch "$CUSTOM"
-
-if grep -qE "@import\s+['\"]space['\"]" "$CUSTOM"; then
-  echo "custom.scss:      already imports 'space', left alone"
-else
-  printf "\n@import 'space';\n" >> "$CUSTOM"
-  echo "custom.scss:      added @import 'space'"
+  # An earlier version of these instructions had the stylesheet going to
+  # the portal, where nothing compiles it. Clean that up if it's there.
+  for stale in "$PORTAL/app/styles/_space.scss" "$PORTAL/app/styles/custom.scss"; do
+    if [ -f "$stale" ]; then
+      echo "stale file:        $stale (nothing compiles this - safe to delete)"
+    fi
+  done
 fi
 
 echo
-echo "Now rebuild the portal:"
-echo "    cd $PORTAL && ember build --environment=production"
+echo "Then, in-game:"
+echo "    load styles          # rebuilds game/styles/ares.css - no ember build"
+echo
+echo "The routes DO need a portal rebuild, but only if you changed them:"
+echo "    cd \"$PORTAL\" && ember build --environment=production"
