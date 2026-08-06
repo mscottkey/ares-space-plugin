@@ -142,7 +142,7 @@ by this plugin, because every plugin adding pages shares them:
 
 | File | Why it's left alone |
 |---|---|
-| `game/styles/custom_style.scss` | the game's CSS hook; `_space.scss` is a partial and compiles only once something imports it |
+| `game/styles/custom_style.scss` | the game's CSS hook, and the admin's own — editable in the portal under *Theme → Custom Styles* |
 | `<portal>/app/custom-routes.js` | one hook, many plugins — overwriting it deletes someone else's pages |
 
 Both are one line each and covered below. Or do them at once — note this
@@ -186,13 +186,33 @@ and nothing else gets compiled. The hook is on the game side:
 - The portal's `index.html` links `/game/styles/ares.css` **last**, after
   its own bundle — so these rules win without needing `!important`.
 
+There are two ways in, and they end at the same file. **Pick one** —
+doing both just duplicates every rule.
+
+#### Paste it (no shell, no files)
+
+Open the portal as an admin, go to **Theme → Custom Styles**, and paste
+the entire contents of `game/styles/_space.scss` at the bottom of
+whatever's already there. That box *is* `game/styles/custom_style.scss`,
+and it's SCSS, so the file goes in as-is — nesting, `@keyframes`, media
+queries and all.
+
+Nothing to upload and nothing to import. Your existing styles are
+untouched; ours land after them.
+
+#### Or import it (one line)
+
 `plugin/install` already put `_space.scss` in `game/styles/`. Sass skips a
-leading-underscore partial unless something imports it, so add one line to
-`game/styles/custom_style.scss`:
+leading-underscore partial unless something imports it, so add one line —
+either in that same **Theme → Custom Styles** box, or from a shell:
 
 ```
 echo '@import "space";' >> aresmush/game/styles/custom_style.scss
 ```
+
+Tidier, and it keeps your CSS box uncluttered.
+
+#### Either way
 
 Then, in-game:
 
@@ -201,9 +221,12 @@ load styles
 ```
 
 That's the whole thing — **no `ember build` for CSS.** `load styles` calls
-`Website.rebuild_css`, and the browser picks it up on a hard refresh. An
-admin can also edit that import from the portal under *Theme → Custom
-Styles*.
+`Website.rebuild_css`, and the browser picks it up on a hard refresh.
+
+**On updates**, note that re-running `plugin/install` does *not* refresh
+`game/` once the plugin exists — `PluginImporter` skips `import_game`
+entirely on a reinstall. So a new release's CSS needs either a re-paste,
+or `_space.scss` copied over by hand. Neither route gets it for free.
 
 This step is easy to miss because nothing errors without it. It no longer
 breaks the map — both pages carry presentation attributes as a fallback,

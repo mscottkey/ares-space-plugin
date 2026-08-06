@@ -1,17 +1,24 @@
-// Game styles, not portal styles. This file belongs in game/styles/ and
-// is pulled in with one line in game/styles/custom_style.scss:
+// Game styles, not portal styles - ares-webportal has no CSS hook in its
+// app/styles/, and a partial dropped there is never compiled.
 //
-//     @import "space";
+// Two ways in, and they are the same file in the end. Pick one; doing
+// both just duplicates every rule.
 //
-// Ares compiles engine/styles/ares.scss - which ends with
+//   1. Paste the whole of this file at the bottom of the portal's
+//      Theme -> Custom Styles box. Nothing to upload, no shell.
+//   2. Or, if this file is already in game/styles/ (plugin/install puts
+//      it there), one line in game/styles/custom_style.scss instead:
+//
+//          @import "space";
+//
+//      Tidier, and keeps the admin's own CSS box uncluttered.
+//
+// Either way Ares compiles engine/styles/ares.scss - which ends with
 // @import "custom_style" - through SassC with game/styles on the load
-// path, and writes game/styles/ares.css. The portal's index.html links
-// that file last, after its own bundle, so these rules win without
-// needing !important.
-//
-// Two useful consequences: `load styles` in-game rebuilds it, so a CSS
-// change needs no ember build; and an admin can edit the import from the
-// portal under Theme -> Custom Styles.
+// path, writing game/styles/ares.css. The portal's index.html links that
+// file last, after its own bundle, so these rules win without needing
+// !important, and `load styles` rebuilds them in-game with no ember
+// build.
 //
 // Colours deliberately inherit from the portal theme where possible so
 // this doesn't fight whatever skin the game is using.

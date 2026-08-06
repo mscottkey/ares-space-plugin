@@ -38,17 +38,24 @@ fi
 # game/styles on the load path, and the portal links the result last.
 # ---------------------------------------------------------------------
 CUSTOM="$ARES/game/styles/custom_style.scss"
-
-if [ ! -f "$ARES/game/styles/_space.scss" ]; then
-  echo "!! game/styles/_space.scss is missing - plugin/install hasn't run,"
-  echo "!! or ran before this file was added. Re-run it, or copy"
-  echo "!! game/styles/_space.scss from the repo by hand."
-  echo
-fi
-
 touch "$CUSTOM"
-if grep -qE '@import\s+["'"'"']space["'"'"']' "$CUSTOM"; then
+
+# Anchored to the start of the line on purpose: _space.scss documents its
+# own `@import "space";` in a header comment, so an unanchored match fires
+# on the comment when the whole file has been pasted in.
+if grep -qE '^[[:space:]]*@import[[:space:]]+["'"'"']space["'"'"']' "$CUSTOM"; then
   echo "custom_style.scss: already imports 'space', left alone"
+elif grep -q 'space-orbit-spin' "$CUSTOM"; then
+  # The admin pasted the stylesheet into Theme -> Custom Styles instead.
+  # That's a supported route; adding the import too would duplicate every
+  # rule, so leave it be.
+  echo "custom_style.scss: styles pasted in directly, left alone"
+elif [ ! -f "$ARES/game/styles/_space.scss" ]; then
+  echo "!! game/styles/_space.scss is missing and nothing is pasted in, so"
+  echo "!! there is no stylesheet to compile. Either re-run plugin/install,"
+  echo "!! or paste the repo's game/styles/_space.scss into the portal under"
+  echo "!! Theme -> Custom Styles."
+  echo
 else
   printf '\n@import "space";\n' >> "$CUSTOM"
   echo "custom_style.scss: added @import \"space\""
