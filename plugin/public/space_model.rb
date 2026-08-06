@@ -136,6 +136,33 @@ module AresMUSH
     index :sector_id
     reference :carrier, "AresMUSH::SpaceShip"
 
+    # The one room external exits connect to - where boarding always
+    # lands you, and later (once docking retargets exits) the anchor an
+    # exit points at. Created lazily on first board, not at spawn: most
+    # ships spawned for a test fight are never boarded at all.
+    reference :entry_room, "AresMUSH::Room"
+
+    # Every room a character can run ship commands from - always
+    # includes entry_room, and staff/the owner can add more by tagging a
+    # room while standing in it. Deliberately unlabeled: bridge,
+    # engineering, entry are all equally "on duty" as far as any command
+    # cares, because in an actual scene everyone ends up in the same
+    # room anyway. What the set excludes matters more than what it
+    # contains - a private cabin or the mess hall built off the same
+    # interior is real space aboard the ship that doesn't count.
+    attribute :operational_rooms, :type => DataType::Array, :default => []
+
+    # Optional. Set, this character can bump anyone off a station on
+    # this ship the way staff always could; unset, only staff can force
+    # a reassignment and claiming an open seat is first-come.
+    reference :owner, "AresMUSH::Character"
+
+    # char key => room id the character was in before boarding, so
+    # space/disembark returns them there instead of guessing. Scoped to
+    # the ship rather than the character so this plugin never has to
+    # touch the core Character model.
+    attribute :boarded_from, :type => DataType::Hash, :default => {}
+
     def save_upcase
       self.name_upcase = self.name ? self.name.upcase : nil
     end
@@ -159,6 +186,23 @@ module AresMUSH
     attribute :body_key
     attribute :faction
     attribute :notes
+  end
+
+  # Reopening core's Character, the same way fs3combat/places/scenes/
+  # describe/rooms all reopen core's Room from their own public/ files -
+  # an established, safe pattern, not a fork.
+  #
+  # Authoritative, not a room lookup: "which ship are you on" is "which
+  # ship did you last board," full stop, until you board a different one
+  # or disembark. Wandering off through an ordinary exit without
+  # disembarking properly does NOT clear this - you're still "on" that
+  # ship as far as any order is concerned, the same way forgetting to
+  # sign out of a system doesn't log you out. Boarding.aboard? (a
+  # physical room check) is a separate, non-authoritative signal for
+  # flagging that mismatch somewhere later - a "?" next to a status
+  # line, say - never something that overrides this.
+  class Character
+    reference :current_ship, "AresMUSH::SpaceShip"
   end
 
   # An engagement in a sector. Sectors can hold drifting contacts with no

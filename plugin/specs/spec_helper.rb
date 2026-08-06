@@ -10,5 +10,7 @@ RSpec.configure do |config|
     AresMUSH::TestWorld.reset!
     AresMUSH::FS3Skills.reset!
     AresMUSH::Character.reset!
+    AresMUSH::Room.reset!
+    AresMUSH::Rooms.reset!
   end
 end

@@ -47,6 +47,12 @@ module AresMUSH
           return SpaceClearCmd
         when 'travel', 'nav'
           return SpaceTravelCmd
+        when 'board'
+          return SpaceBoardCmd
+        when 'disembark'
+          return SpaceDisembarkCmd
+        when 'tag'
+          return SpaceTagCmd
 
         # GM
         when 'sector'

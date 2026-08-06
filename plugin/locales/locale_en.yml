@@ -116,6 +116,16 @@ en:
     station_assigned: "%{name} is now at %{station} aboard %{ship}."
     station_npc_assigned: "%{station} aboard %{ship} is crewed by NPC hands (%{rating} dice)."
     station_cleared: "%{station} aboard %{ship} is now unmanned."
+
+    # Boarding
+    boarded: "You board %{ship}."
+    disembarked: "You disembark from %{ship}."
+    already_aboard: "You're already aboard %{ship}."
+    not_aboard: "You aren't aboard %{ship}."
+    no_room: "That room doesn't exist."
+    room_tagged: "%{room} is now part of %{ship} for command purposes."
+    room_already_tagged: "%{room} is already part of the ship."
+    not_ship_owner: "Only %{ship}'s owner or staff can do that."
     terrain_added: "%{type} added to %{sector} at %{x},%{y}."
     combat_started: "Engagement started in %{sector}."
     combat_started_crew: "%{sector}: action stations. The engagement has begun."

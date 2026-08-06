@@ -98,10 +98,82 @@ module AresMUSH
   end
 
   class TestCharacter
-    attr_accessor :id, :name
+    attr_accessor :id, :name, :room, :current_ship
     def initialize(id, name)
       self.id = id
       self.name = name
+    end
+
+    def update(attrs)
+      attrs.each { |k, v| send("#{k}=", v) }
+      self
+    end
+
+    def is_admin?
+      !!@is_admin
+    end
+
+    def is_admin=(val)
+      @is_admin = val
+    end
+  end
+
+  # Stand-ins for core's Room model and the `rooms` plugin's public
+  # move_to API (plugins/rooms/public/rooms_api.rb) - Boarding calls the
+  # real ones in production, exactly the same way the plugin calls out
+  # to real FS3Skills above.
+  class TestRoom
+    attr_accessor :id, :name
+    @@next_id = 1
+
+    def initialize(name)
+      self.id = (@@next_id += 1).to_s
+      self.name = name
+    end
+  end
+
+  module Room
+    class << self
+      attr_accessor :registry
+
+      def create(opts = {})
+        room = TestRoom.new(opts[:name])
+        self.registry ||= {}
+        self.registry[room.id] = room
+        room
+      end
+
+      def [](id)
+        (self.registry || {})["#{id}"]
+      end
+
+      def reset!
+        self.registry = {}
+      end
+    end
+  end
+
+  module Rooms
+    class << self
+      attr_accessor :move_log
+
+      def reset!
+        self.move_log = []
+      end
+
+      # Mirrors the real move_to's one visible side effect for specs:
+      # the character ends up in the new room. The real one also fires
+      # room echoes and screen-reader handling - not this plugin's
+      # behaviour to test, so the double doesn't reproduce it.
+      def move_to(client, char, room, exit_name = nil)
+        self.move_log ||= []
+        move_log << { char: char.name, room: room ? room.name : nil, exit: exit_name }
+        char.update(room: room)
+      end
+
+      def ooc_room
+        @ooc_room ||= Room.create(name: "OOC Room")
+      end
     end
   end
 
@@ -121,7 +193,8 @@ module AresMUSH
 
     ATTRS = [ :id, :name, :ship_class, :faction, :x, :y, :facing, :speed,
               :sections, :stations, :orders, :ammo, :evade_margin,
-              :sweep_range, :status, :sector ]
+              :sweep_range, :status, :sector, :entry_room, :operational_rooms,
+              :owner, :boarded_from ]
     attr_accessor(*ATTRS)
 
     def initialize(opts = {})
@@ -139,6 +212,10 @@ module AresMUSH
       self.sweep_range = 0
       self.stations = opts[:stations] || {}
       self.orders = {}
+      self.entry_room = opts[:entry_room]
+      self.operational_rooms = opts[:operational_rooms] || []
+      self.owner = opts[:owner]
+      self.boarded_from = opts[:boarded_from] || {}
       class_data = Space::SpaceConfig.ship_class(self.ship_class) || {}
       self.sections = opts[:sections] || Space::Ships.build_sections(class_data)
       self.ammo = opts[:ammo] || Space::Ships.build_ammo(class_data)
@@ -211,6 +288,10 @@ module AresMUSH
 
       def self.find_ship_in_sector(sector, name)
         sector_ships(sector).find { |s| s.name.to_s.downcase == "#{name}".downcase }
+      end
+
+      def self.all_ships
+        TestWorld.ships
       end
     end
   end

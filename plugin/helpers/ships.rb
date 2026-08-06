@@ -28,6 +28,14 @@ module AresMUSH
         SpaceShip.all.select { |s| s.name.to_s.downcase == "#{name}".downcase }.first
       end
 
+      # Every ship that exists, regardless of sector or system. Kept as
+      # its own method (rather than callers reaching for SpaceShip.all
+      # directly) so the spec harness has one seam to redirect at the
+      # in-memory world, the same as sector_ships and find_ship above.
+      def self.all_ships
+        SpaceShip.all.to_a
+      end
+
       def self.find_ship_in_sector(sector, name)
         return nil if name.nil?
         sector_ships(sector).select { |s| s.name.to_s.downcase == "#{name}".downcase }.first

@@ -459,8 +459,82 @@ speed-up: every body's on-screen position moved 18-20px within a 2-second
 window at typical render scale - the literal "can you tell inside a
 couple of seconds" test the report asked. 162 specs pass (3 new).
 
-## 13. Still to do
+## 13. Ships and the room grid
+
+Space is not the room grid - a sector is instruments, not a place you walk
+into (§7). But a ship's *interior* is a place, and RP happens in rooms,
+so this plugin needs a seam to the grid without owning it or changing how
+it works. Traced instead of assumed:
+
+- `Room` and `Exit` (`engine/aresmush/models/room.rb`, `exit.rb`) are
+  plain Ohm models any plugin can create - `Room.create(name:, area:)`
+  is the exact call `plugins/rooms/web/location_create_request_handler.rb`
+  itself makes. Retargeting an exit at runtime (a docking bay pointing
+  wherever a ship currently is) is an ordinary reference write,
+  `exit.update(dest: room)`.
+- `Rooms.move_to(client, char, room, exit_name)` is the `rooms` plugin's
+  public API (`plugins/rooms/public/rooms_api.rb`) - the same thing a
+  plain `go` command calls. Boarding uses this rather than reimplementing
+  room echoes and screen-reader handling.
+- Reopening a core model from a plugin's own file is an established
+  pattern, not a fork - `fs3combat`, `places`, `scenes`, `describe`, and
+  `rooms` itself all reopen `Room` from their own `public/*_room.rb`.
+  This plugin reopens `Character` the same way, to add one reference.
+
+None of this touches core.
+
+### Model
+
+- `SpaceShip.entry_room` - the one room external exits connect to.
+  Created lazily on first board, not at spawn (most ships spawned for a
+  test fight are never boarded).
+- `SpaceShip.operational_rooms` - every room a character can run ship
+  commands from. Always includes `entry_room`; staff or the ship's
+  `owner` can tag more by standing in a room they've built and running
+  `space/tag`. Deliberately unlabeled - nothing here cares whether
+  you're on the bridge or in engineering, only whether the room counts
+  as on duty at all. A private cabin off the same interior isn't tagged,
+  and doesn't count. A ship is one room mechanically for as long as a
+  scene runs, whatever its deck plan says; staff can build the deck plan
+  out for flavor without any of it being mechanically load-bearing until
+  someone tags a specific room on purpose.
+- `SpaceShip.owner` - optional. Set, that character can bump anyone off
+  a station the way staff always could; unset, only staff can force a
+  reassignment (self-service claiming of an *open* station is unaffected
+  either way - that's slice 2).
+- `Character.current_ship` - authoritative, not derived from the room
+  graph. "Which ship are you on" is "which ship did you last board,"
+  full stop, until you board a different one or explicitly disembark.
+  Wandering off through an ordinary exit without disembarking does
+  *not* clear it - orders still go to that ship, the same way forgetting
+  to log out of a console doesn't log you out. `Boarding.aboard?` (a
+  physical room check, independent of the stamp) is a separate,
+  non-authoritative signal reserved for flagging that mismatch somewhere
+  later - a "?" on a status line - never something that overrides the
+  stamp.
+
+### Commands
+
+`space/board <ship>`, `space/disembark` (no argument - you can only be
+in one room, so at most one ship, at a time), `space/tag` (also no
+argument - tags the room you're standing in). Boarding is open to any
+player; only staff or the owner can tag a room, checked via a
+`check_can_tag` guard (`CommandHandler` auto-calls any `check_*` method).
+
+### What's deliberately not built yet
+
+- Exit retargeting so boarding is walking through a door instead of
+  typing a ship's name - `space/board` is a placeholder for that.
+- Self-service station claiming, and the `Ships.ship_for_char` fix that
+  has to ship alongside it once a character can hold a seat on more than
+  one ship (`.first` on a hash scan is already technically wrong today,
+  just unreachable while only staff can create the ambiguity).
+- Hangar bays / carrier launch-recovery, using the same retargeting
+  mechanism recursively.
+
+## 14. Still to do
 
 - Carrier operations: launching and recovering fighters from the
-  Covenant's flight deck (`carrier` reference exists on the model).
+  Covenant's flight deck (`carrier` reference exists on the model) -
+  see §13, now that entry_room/operational_rooms exist to build it on.
 - Pseudo-real-time tick (§9), after the POC has been played.
