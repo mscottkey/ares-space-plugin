@@ -222,9 +222,22 @@
   // here would be undone by the counter-rotation group above it. Type size
   // is an attribute too - it has to be in canvas units, and a px value
   // here would silently override the one the server sent.
+  //
+  // Hidden until hovered or selected - a fourteen-world system with every
+  // name always on screen is unreadable, especially once a moon's label
+  // is sitting a few px from its parent's. Opacity rather than
+  // `display`/`visibility`: those would drop out of the animated
+  // transform chain instead of just fading, since a counter-rotation
+  // group with nothing to counter-rotate isn't the same as one with
+  // display:none content skipped from layout entirely (harmless either
+  // way here, but opacity keeps the hit-testing/timing identical to a
+  // label that was always there, which is one less thing to reason
+  // about while debugging the transform math above).
   .space-body-label {
     fill: #55555f;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
   }
 
   &.is-belt .space-body-core {
@@ -233,6 +246,11 @@
 
   &.is-selected .space-body-core {
     stroke-width: 3;
+  }
+
+  &.is-selected .space-body-label,
+  &:hover .space-body-label {
+    opacity: 1;
   }
 
   &:hover .space-body-core {
