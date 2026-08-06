@@ -126,44 +126,36 @@ sits outside `webportal/` at the repo root for exactly the opposite
 reason — it's never auto-copied, because it holds files meant to be
 merged by hand.
 
-If you used Option A and the auto-copy skipped (checkout not found), the
-quickest fix is to clone the repo anywhere on the server and run:
+**`plugin/install` copies all of it** — routes, controllers, templates,
+colocated components, and `_space.scss` — straight into the portal's
+`app/`, provided it can find your checkout at `website.website_code_path`.
+There is no file to move by hand.
 
-```
-bash tools/install-portal.sh /path/to/aresmush/webportal
-```
+What it can't do is touch the two files that belong to the *portal*
+rather than to this plugin, because every plugin adding pages shares
+them:
 
-That copies every file below, creates or merges `custom-routes.js`, adds
-the `@import 'space'` to `custom.scss`, and tells you what's left to do.
-Safe to re-run.
-
-Doing it by hand, or over SFTP, the files go:
-
-| From | To |
+| File | Why it's left alone |
 |---|---|
-| `webportal/routes/space-sectors.js` | `aresmush/webportal/app/routes/` |
-| `webportal/routes/space-tactical.js` | `aresmush/webportal/app/routes/` |
-| `webportal/controllers/space-tactical.js` | `aresmush/webportal/app/controllers/` |
-| `webportal/templates/space-sectors.hbs` | `aresmush/webportal/app/templates/` |
-| `webportal/templates/space-tactical.hbs` | `aresmush/webportal/app/templates/` |
-| `webportal/routes/space-system.js` | `aresmush/webportal/app/routes/` |
-| `webportal/controllers/space-system.js` | `aresmush/webportal/app/controllers/` |
-| `webportal/templates/space-system.hbs` | `aresmush/webportal/app/templates/` |
-| `webportal/components/space-plot.js` | `aresmush/webportal/app/components/` |
-| `webportal/components/space-plot.hbs` | `aresmush/webportal/app/components/` |
-| `webportal/components/space-system-map.js` | `aresmush/webportal/app/components/` |
-| `webportal/components/space-system-map.hbs` | `aresmush/webportal/app/components/` |
+| `app/custom-routes.js` | one hook, many plugins — overwriting it deletes someone else's pages |
+| `app/styles/custom.scss` | likewise, and `_space.scss` does nothing until something imports it |
 
-Component JS and HBS are **colocated** in `app/components/` — that is the
-current portal's layout, not `app/templates/components/`.
+Both are one line each and covered below. Or do them at once:
+
+```
+bash tools/finish-portal-install.sh /path/to/aresmush/webportal
+```
+
+It also checks that `plugin/install`'s copy actually landed, and is safe
+to re-run.
 
 ### Register the routes
 
 `custom_files/custom-routes.js` goes to
-`aresmush/webportal/app/custom-routes.js`. **Always merge, never
-overwrite** — it's one hook shared by every plugin that adds pages, and
-`plugin/install` never touches it automatically for that reason. The two
-lines that matter:
+`aresmush/webportal/app/custom-routes.js`. It sits outside `webportal/`
+at the repo root precisely so it is *never* auto-copied. **Always merge,
+never overwrite.** The three lines that matter, inside the exported
+function's body:
 
 ```js
 router.route('space-system', { path: '/space' });
@@ -177,22 +169,22 @@ on current portal versions.)
 
 ### Styles
 
-`plugin/install` does **not** copy this file - `webportal/styles/` isn't
-part of the portal's `app/styles/`, and custom.scss is a shared file no
-installer should overwrite. Do it by hand:
+`plugin/install` already put `_space.scss` in `app/styles/`. Sass ignores
+a leading-underscore partial unless something imports it, so add one line
+to `app/styles/custom.scss`:
 
 ```
-cp webportal/styles/_space.scss aresmush/webportal/app/styles/
 echo "@import 'space';" >> aresmush/webportal/app/styles/custom.scss
 ```
 
-(Or just append the file's contents to custom.scss.) Then rebuild - see
-below. The `@import` does nothing until `ember build` runs again.
+Then rebuild — see below. The `@import` does nothing until `ember build`
+runs again.
 
-Skipping this no longer breaks the map: both pages draw with presentation
-attributes as a fallback, so you get a correct but plain map rather than
-a black smear. You do lose the hover states, the engagement pulse and the
-orbit animation, so it's worth doing.
+This is the step that's easy to miss, because nothing errors without it.
+It no longer breaks the map: both pages carry presentation attributes as
+a fallback, so an unstyled build draws a correct-but-plain map rather
+than a black smear. You do lose the hover states, the engagement pulse
+and the orbit animation, so it's worth doing.
 
 ### Navigation link (optional)
 
