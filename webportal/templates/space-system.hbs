@@ -20,64 +20,67 @@
   {{/if}}
 </div>
 
-<div class="row">
-  <div class="col-lg-8">
-    <SpaceSystemMap
-      @system={{this.model}}
-      @selectedKey={{this.selectedKey}}
-      @animate={{this.animate}}
-      @onSelect={{action "selectBody"}} />
-  </div>
+<SpaceSystemMap
+  @system={{this.model}}
+  @selectedKey={{this.selectedKey}}
+  @animate={{this.animate}}
+  @onSelect={{action "selectBody"}} />
 
-  <div class="col-lg-4">
-    {{#if this.selectedBody}}
-      <h3>{{this.selectedBody.name}}</h3>
-      <p class="space-body-meta">
-        {{this.selectedBody.classification}} &middot; ring {{this.selectedBody.ring}}
-        &middot; held by <strong>{{this.selectedBody.faction}}</strong>
-      </p>
-      {{#if this.selectedBody.description}}
-        <p>{{this.selectedBody.description}}</p>
-      {{/if}}
-
-      {{#if this.selectedBody.ships.length}}
-        <h4>Present</h4>
-        <ul class="space-body-ships-list">
-          {{#each this.selectedBody.ships as |name|}}<li>{{name}}</li>{{/each}}
-        </ul>
-      {{/if}}
-
-      {{#if this.selectedBody.engaged}}
-        <p class="space-body-engaged-note">
-          Engagement in progress, round {{this.selectedBody.round}}.
-          <LinkTo @route="space-tactical" @model={{this.selectedBody.sector_id}}>
-            Open tactical plot
-          </LinkTo>
+<div class="space-body-detail">
+  {{#if this.selectedBody}}
+    <div class="space-body-detail-header">
+      <div>
+        <h3>{{this.selectedBody.name}}</h3>
+        <p class="space-body-meta">
+          {{this.selectedBody.classification}} &middot; ring {{this.selectedBody.ring}}
+          &middot; held by <strong>{{this.selectedBody.faction}}</strong>
         </p>
-      {{/if}}
-
+      </div>
       {{#if this.model.own_ship}}
         <button class="btn btn-sm btn-primary"
                 {{action "travelTo" this.selectedBody.key}}>
           Set course for {{this.selectedBody.name}}
         </button>
       {{/if}}
-    {{else}}
-      <p class="space-system-hint">Select a body on the map for detail.</p>
+    </div>
+
+    {{#if this.selectedBody.description}}
+      <p>{{this.selectedBody.description}}</p>
     {{/if}}
 
-    <h4>Bodies</h4>
-    <table class="table table-sm space-body-table">
-      <tbody>
-        {{#each this.model.bodies as |body|}}
-          <tr class="{{if body.engaged 'space-row-engaged'}}">
-            <td>{{body.ring}}</td>
-            <td>{{body.name}}</td>
-            <td>{{body.faction}}</td>
-            <td>{{#if body.ships.length}}{{body.ships.length}}{{/if}}</td>
-          </tr>
-        {{/each}}
-      </tbody>
-    </table>
-  </div>
+    {{#if this.selectedBody.ships.length}}
+      <h4>Present</h4>
+      <ul class="space-body-ships-list">
+        {{#each this.selectedBody.ships as |name|}}<li>{{name}}</li>{{/each}}
+      </ul>
+    {{/if}}
+
+    {{#if this.selectedBody.engaged}}
+      <p class="space-body-engaged-note">
+        Engagement in progress, round {{this.selectedBody.round}}.
+        <LinkTo @route="space-tactical" @model={{this.selectedBody.sector_id}}>
+          Open tactical plot
+        </LinkTo>
+      </p>
+    {{/if}}
+  {{else}}
+    <p class="space-system-hint">Select a body on the map for detail.</p>
+  {{/if}}
 </div>
+
+<h4>Bodies</h4>
+<table class="table table-sm space-body-table">
+  <thead>
+    <tr><th>Ring</th><th>Name</th><th>Faction</th><th>Ships</th></tr>
+  </thead>
+  <tbody>
+    {{#each this.model.bodies as |body|}}
+      <tr class="{{if body.engaged 'space-row-engaged'}}">
+        <td>{{body.ring}}</td>
+        <td>{{body.name}}</td>
+        <td>{{body.faction}}</td>
+        <td>{{#if body.ships.length}}{{body.ships.length}}{{/if}}</td>
+      </tr>
+    {{/each}}
+  </tbody>
+</table>
