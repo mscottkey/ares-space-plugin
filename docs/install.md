@@ -126,8 +126,18 @@ sits outside `webportal/` at the repo root for exactly the opposite
 reason — it's never auto-copied, because it holds files meant to be
 merged by hand.
 
-If you used Option A and the auto-copy skipped (checkout not found) or
-you're doing this by SFTP, copy into your portal checkout:
+If you used Option A and the auto-copy skipped (checkout not found), the
+quickest fix is to clone the repo anywhere on the server and run:
+
+```
+bash tools/install-portal.sh /path/to/aresmush/webportal
+```
+
+That copies every file below, creates or merges `custom-routes.js`, adds
+the `@import 'space'` to `custom.scss`, and tells you what's left to do.
+Safe to re-run.
+
+Doing it by hand, or over SFTP, the files go:
 
 | From | To |
 |---|---|
