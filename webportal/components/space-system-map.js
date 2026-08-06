@@ -152,6 +152,17 @@ export default Component.extend({
         // parent's resting point instead of the star's.
         const moonX = bodyX + m.orbit_radius;
         const moonY = bodyY;
+        // Same animation-duration/delay as the parent's counterStyle -
+        // it has to cancel the exact same shared Spin(t) - but pivoted
+        // at the MOON's own resting point, not the parent's. Reusing
+        // the parent's counterStyle verbatim (its transform-origin is
+        // the parent's bodyX/bodyY) was the actual bug here: rotating
+        // the moon's counter-spin about the wrong point doesn't cancel
+        // position, it orbits the moon around a point offset from
+        // where it belongs by exactly its own moon_orbit distance.
+        const moonCounterStyle =
+          `transform-origin:${moonX}px ${moonY}px;` +
+          `animation-duration:${period}s;` + paused;
 
         return Object.assign(this._visual(m, labelSize), {
           bodyX: moonX,
@@ -162,7 +173,7 @@ export default Component.extend({
           // star together, at a constant offset - "rides its parent's
           // orbit," literally.
           localTransform: `rotate(${moonAngle} ${bodyX} ${bodyY})`,
-          counterStyle,
+          counterStyle: moonCounterStyle,
           // Undoes the parent's startTransform AND this moon's own
           // localTransform in one rotation - the moon branch never
           // passes through the parent's own counter group, so nothing

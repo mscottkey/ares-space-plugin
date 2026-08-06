@@ -59,6 +59,13 @@
           on every single click. }}
       {{#each this.bodies key="key" as |body|}}
         <g class="space-orbit-spin" style={{body.spinStyle}}>
+          {{! This startTransform group has to wrap the moons loop below,
+              not just the parent's own content - a moon nested outside
+              it never receives the parent's static angle, while its own
+              counter-transform keeps subtracting that angle as though it
+              had. That mismatch was a real, shipped bug: it left a
+              constant, uncancelled tilt on every moon's label and threw
+              its position off by the same missing rotation. }}
           <g transform={{body.startTransform}}>
             <g class="space-orbit-counter" style={{body.counterStyle}}>
               <g transform={{body.counterTransform}}>
@@ -105,56 +112,56 @@
                 </g>
               </g>
             </g>
-          </g>
 
-          {{#each body.moons key="key" as |moon|}}
-            <g transform={{moon.localTransform}}>
-              <g class="space-orbit-counter" style={{moon.counterStyle}}>
-                <g transform={{moon.counterTransform}}>
-                  <g class="space-system-body
-                            {{if moon.selected 'is-selected'}}
-                            {{if moon.engaged 'is-engaged'}}"
-                     role="button"
-                     {{action "selectBody" moon}}>
+            {{#each body.moons key="key" as |moon|}}
+              <g transform={{moon.localTransform}}>
+                <g class="space-orbit-counter" style={{moon.counterStyle}}>
+                  <g transform={{moon.counterTransform}}>
+                    <g class="space-system-body
+                              {{if moon.selected 'is-selected'}}
+                              {{if moon.engaged 'is-engaged'}}"
+                       role="button"
+                       {{action "selectBody" moon}}>
 
-                    {{#if moon.factionColor}}
-                      <circle class="space-body-faction"
-                              cx={{moon.bodyX}} cy={{moon.bodyY}}
-                              r={{moon.haloRadius}}
-                              fill="none" stroke={{moon.factionColor}}
-                              stroke-width="2" stroke-opacity="0.55" />
-                    {{/if}}
+                      {{#if moon.factionColor}}
+                        <circle class="space-body-faction"
+                                cx={{moon.bodyX}} cy={{moon.bodyY}}
+                                r={{moon.haloRadius}}
+                                fill="none" stroke={{moon.factionColor}}
+                                stroke-width="2" stroke-opacity="0.55" />
+                      {{/if}}
 
-                    {{#if moon.shipCount}}
-                      <circle class="space-body-ships"
-                              cx={{moon.bodyX}} cy={{moon.bodyY}}
-                              r={{moon.shipsRadius}}
-                              fill="none" stroke="#3b7dd8" stroke-width="1"
-                              stroke-opacity="0.7" stroke-dasharray="2 2" />
-                    {{/if}}
+                      {{#if moon.shipCount}}
+                        <circle class="space-body-ships"
+                                cx={{moon.bodyX}} cy={{moon.bodyY}}
+                                r={{moon.shipsRadius}}
+                                fill="none" stroke="#3b7dd8" stroke-width="1"
+                                stroke-opacity="0.7" stroke-dasharray="2 2" />
+                      {{/if}}
 
-                    {{#if moon.engaged}}
-                      <circle class="space-body-engaged"
-                              cx={{moon.bodyX}} cy={{moon.bodyY}}
-                              r={{moon.engagedRadius}}
-                              fill="none" stroke="#d9534f" stroke-width="2" />
-                    {{/if}}
+                      {{#if moon.engaged}}
+                        <circle class="space-body-engaged"
+                                cx={{moon.bodyX}} cy={{moon.bodyY}}
+                                r={{moon.engagedRadius}}
+                                fill="none" stroke="#d9534f" stroke-width="2" />
+                      {{/if}}
 
-                    <circle class="space-body-core"
-                            cx={{moon.bodyX}} cy={{moon.bodyY}} r={{moon.size}}
-                            fill={{moon.fill}} stroke={{moon.stroke}}
-                            stroke-width="1.5" />
+                      <circle class="space-body-core"
+                              cx={{moon.bodyX}} cy={{moon.bodyY}} r={{moon.size}}
+                              fill={{moon.fill}} stroke={{moon.stroke}}
+                              stroke-width="1.5" />
 
-                    <text class="space-body-label" x={{moon.bodyX}} y={{moon.bodyY}}
-                          dy={{moon.labelDy}} text-anchor="middle"
-                          font-size={{this.labelSize}} fill="#55555f">{{moon.name}}</text>
+                      <text class="space-body-label" x={{moon.bodyX}} y={{moon.bodyY}}
+                            dy={{moon.labelDy}} text-anchor="middle"
+                            font-size={{this.labelSize}} fill="#55555f">{{moon.name}}</text>
 
-                    <title>{{moon.name}} &mdash; {{moon.classification}}, held by {{moon.faction}}{{#if moon.engaged}} (ENGAGED, round {{moon.round}}){{/if}}</title>
+                      <title>{{moon.name}} &mdash; {{moon.classification}}, held by {{moon.faction}}{{#if moon.engaged}} (ENGAGED, round {{moon.round}}){{/if}}</title>
+                    </g>
                   </g>
                 </g>
               </g>
-            </g>
-          {{/each}}
+            {{/each}}
+          </g>
         </g>
       {{/each}}
     </g>
