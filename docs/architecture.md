@@ -424,6 +424,41 @@ the rotation, never drifting, with label tilt at 0.00° throughout. 159
 specs pass (4 new), including one that pins the exact regression - a
 moon's own angle no longer decides where it lands relative to the star.
 
+### 12c. Working and invisible are not the same thing
+
+Reported as "the orbits never animate." They did: `animation-play-state`
+read `running`, `prefers-reduced-motion` was `false`, and a click did
+visibly reset the whole map - but between clicks, nothing looked like it
+was moving. It wasn't broken; it was 240 seconds per revolution for the
+fastest (ring 1) body, and slower for every ring after that. Watching for
+a normal few seconds shows a body drift a couple of degrees - real, but
+below the threshold of noticing unless you already know to look for it,
+which makes "is this even working" impossible to answer just by looking.
+
+Two separate things came out of chasing this:
+
+- The click-reset was real and worth fixing regardless of the pacing
+  question: `bodies` is a `computed()` keyed to `selectedKey`, returning
+  a fresh array of fresh objects on every click. `{{#each}}` with no
+  explicit `key` matches by object identity, so every click read as "an
+  entirely different list" and tore down and rebuilt every `<g>` in the
+  SVG tree - restarting every element's animation clock at once, planets
+  and moons alike. `key="key"` on both the body and moon loops fixes it:
+  a click now only touches the `is-selected` class on the one body
+  clicked, and every other element's running animation is undisturbed.
+- The pace itself needed to be a dial, not a constant. `orbit_period` in
+  `orbit_layout` (default 24s per ring-1 revolution, scaled per ring the
+  same way the ring spacing itself is) replaces the JS's hardcoded 240.
+  The default is picked to be obviously alive at a glance, not to model
+  real orbital ratios - a value that did the latter would put slower
+  rings below the noticeable threshold regardless, which is the
+  complaint this was answering in the first place.
+
+Verified in Chromium against the real payload with no artificial
+speed-up: every body's on-screen position moved 18-20px within a 2-second
+window at typical render scale - the literal "can you tell inside a
+couple of seconds" test the report asked. 162 specs pass (3 new).
+
 ## 13. Still to do
 
 - Carrier operations: launching and recovering fighters from the

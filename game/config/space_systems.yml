@@ -60,6 +60,13 @@ space:
     # canvas a thousand units across; raise them if the map reads small.
     body_scale: 2.4      # multiplies a body's `size` when drawn
     label_size: 22       # body and ship labels, in the same canvas units
+    # Seconds for a ring-1 body to complete one full revolution; outer
+    # rings scale up from this the same way their spacing does. Tuned
+    # short on purpose - a value modelling real orbital ratios reads as
+    # a still image, because the outer rings' motion drops below what's
+    # noticeable across a normal page visit. Raise it for a calmer,
+    # more ambient map once you know the animation itself is working.
+    orbit_period: 24
     # margin: 88         # blank border outside the last ring; defaults to
                          # label_size * 4, which is enough for a long name
                          # on the outermost orbit not to be clipped

@@ -62,6 +62,18 @@ module AresMUSH
         (layout["label_size"] || 22).to_f
       end
 
+      # Seconds for a ring-1 body to complete one full revolution. Outer
+      # rings take proportionally longer (see space-system-map.js, which
+      # applies the same ring^0.75 curve the ring spacing itself uses).
+      #
+      # The default here is picked to be obviously alive at a glance, not
+      # to be astronomically honest - a config value modelling real
+      # orbital ratios would put the outer rings' motion below the
+      # threshold of being noticeable at all inside a normal page visit.
+      def self.orbit_period(layout = {})
+        (layout["orbit_period"] || 24).to_f
+      end
+
       # How long a trip between two rings takes, in seconds.
       #
       # Faster hulls cross the same gap in less time; `par_speed` is the

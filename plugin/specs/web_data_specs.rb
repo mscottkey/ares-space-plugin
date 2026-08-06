@@ -144,6 +144,10 @@ module AresMUSH
         let(:map) { WebData.system_map("covenant_reach") }
         let(:by_key) { map[:bodies].each_with_object({}) { |b, h| h[b[:key]] = b } }
 
+        it "sends the orbit period so the browser doesn't have to hardcode a pace" do
+          expect(map[:orbit_period]).to eq Systems.orbit_layout["orbit_period"].to_f
+        end
+
         it "puts a moon within its own orbit distance of its parent, not the star" do
           parent = by_key["p3"]
           moon = by_key["p3_moon"]

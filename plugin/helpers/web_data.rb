@@ -184,6 +184,7 @@ module AresMUSH
           size: size,
           center: center,
           label_size: Astro.label_size(layout),
+          orbit_period: Astro.orbit_period(layout),
           rings: ring_radii,
           bodies: bodies,
           ships: system_ship_entries(system_key, by_key, center),

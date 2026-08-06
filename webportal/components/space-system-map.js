@@ -23,10 +23,15 @@ export default Component.extend({
   selectedKey: null,
   animate: true,
 
-  // Seconds for one revolution of the innermost ring. Outer rings take
-  // proportionally longer, which reads as orbital motion without
-  // pretending to be Kepler.
-  basePeriod: 240,
+  // Seconds for one revolution of the innermost ring, from
+  // space_systems.yml's orbit_layout.orbit_period. Outer rings take
+  // proportionally longer (see the `bodies` computed below). Configured
+  // rather than fixed, since "obviously moving" and "calm ambient
+  // background" want very different numbers and there's no way to pick
+  // one that's right for both.
+  basePeriod: computed('system.orbit_period', function () {
+    return this.get('system.orbit_period') || 24;
+  }),
 
   viewBox: computed('system.size', function () {
     const size = this.get('system.size') || 800;

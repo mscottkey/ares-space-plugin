@@ -96,6 +96,22 @@ module AresMUSH
         end
       end
 
+      describe :orbit_period do
+        it "falls back to a default short enough to actually notice" do
+          # The animation was invisible in practice at the first value
+          # tried (240s / ring): watching for a normal few seconds shows
+          # nothing, because a ring-1 body only covers a couple of
+          # degrees in that time. The default has to be short enough
+          # that it doesn't require already knowing to look for it.
+          expect(Astro.orbit_period).to be > 0
+          expect(Astro.orbit_period).to be <= 60
+        end
+
+        it "takes the configured value" do
+          expect(Astro.orbit_period("orbit_period" => 90)).to eq 90.0
+        end
+      end
+
       describe :travel_seconds do
         it "charges per ring crossed" do
           expect(Astro.travel_seconds(1, 3, 2, travel)).to eq 360
