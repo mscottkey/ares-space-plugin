@@ -53,6 +53,10 @@ module AresMUSH
           return SpaceDisembarkCmd
         when 'tag'
           return SpaceTagCmd
+        when 'take'
+          return SpaceTakeCmd
+        when 'leave'
+          return SpaceLeaveCmd
 
         # GM
         when 'sector'

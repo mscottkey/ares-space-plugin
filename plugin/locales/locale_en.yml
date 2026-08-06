@@ -116,12 +116,17 @@ en:
     station_assigned: "%{name} is now at %{station} aboard %{ship}."
     station_npc_assigned: "%{station} aboard %{ship} is crewed by NPC hands (%{rating} dice)."
     station_cleared: "%{station} aboard %{ship} is now unmanned."
+    station_claimed: "%{name} takes %{station} aboard %{ship}."
+    station_released: "%{name} steps away from %{station} aboard %{ship}."
+    station_occupied: "%{station} is already crewed by %{crew}."
+    not_your_station: "You aren't at %{station}."
 
     # Boarding
     boarded: "You board %{ship}."
     disembarked: "You disembark from %{ship}."
     already_aboard: "You're already aboard %{ship}."
     not_aboard: "You aren't aboard %{ship}."
+    not_boarded: "You haven't boarded a ship. Try space/board <ship>."
     no_room: "That room doesn't exist."
     room_tagged: "%{room} is now part of %{ship} for command purposes."
     room_already_tagged: "%{room} is already part of the ship."

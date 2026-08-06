@@ -17,9 +17,15 @@ module AresMUSH
         [ self.ship_name, self.station, self.crew ]
       end
 
-      def check_admin
-        return t('dispatcher.not_allowed') if !enactor.is_admin?
-        return nil
+      # Staff always could force an assignment; a ship's owner can do
+      # the same for their own ship, without needing admin at all.
+      # Anyone else has to use the self-service claim/leave commands,
+      # which only work on a station nobody's already in.
+      def check_can_assign
+        return nil if enactor.is_admin?
+        ship = Ships.find_ship(self.ship_name)
+        return nil if ship && ship.owner && ship.owner.id.to_s == enactor.id.to_s
+        t('space.not_ship_owner', ship: ship ? ship.name : self.ship_name)
       end
 
       def handle

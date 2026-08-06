@@ -55,6 +55,40 @@ module AresMUSH
         (ship.class_data["stations"] || []).map { |s| "#{s}" }.include?("#{station}")
       end
 
+      # Self-service claiming of an OPEN station - no staff needed, but
+      # only for a seat nobody's in. Bumping someone already seated is a
+      # different action (space/crew), gated to staff or the ship's
+      # owner precisely because it isn't self-service.
+      def self.claim(char, ship, station)
+        return failure(t('space.not_aboard', ship: ship.name)) if !Boarding.aboard?(char, ship)
+        return failure(t('space.no_such_station',
+          station: station, valid: (ship.class_data["stations"] || []).join(', '))) if !valid_station?(ship, station)
+        return failure(t('space.station_occupied',
+          station: station, crew: crew_name(ship.crew_at(station)))) if ship.crew_at(station)
+
+        assign(ship, station, char_key(char))
+        success(t('space.station_claimed', name: char.name, station: station, ship: ship.name))
+      end
+
+      # The inverse - stepping away from a station you hold. Refuses to
+      # release a seat that isn't yours; use space/crew to remove
+      # someone else from theirs.
+      def self.release(char, ship, station)
+        return failure(t('space.not_aboard', ship: ship.name)) if !Boarding.aboard?(char, ship)
+        return failure(t('space.not_your_station', station: station)) if ship.stations["#{station}"] != char_key(char)
+
+        unassign(ship, station)
+        success(t('space.station_released', name: char.name, station: station, ship: ship.name))
+      end
+
+      def self.success(message)
+        { ok: true, message: message, error: nil }
+      end
+
+      def self.failure(error)
+        { ok: false, message: nil, error: error }
+      end
+
       # Does FS3 actually know this ability, or would it quietly treat it
       # as an unknown background and hand back a single die?
       def self.known_ability?(ability)

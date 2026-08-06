@@ -532,6 +532,38 @@ player; only staff or the owner can tag a room, checked via a
 - Hangar bays / carrier launch-recovery, using the same retargeting
   mechanism recursively.
 
+## 13a. Self-service crew (slice 2)
+
+The two gaps §13 left open, since they're really one change - claiming
+a seat and knowing which ship that seat's orders belong to are the same
+problem once more than one ship can be involved.
+
+- **`space/take <station>`** / **`space/leave <station>`** - self-service,
+  no staff needed, but only for a station nobody's in. Both act on
+  `Character.current_ship` (whichever ship you last boarded) and require
+  `Boarding.aboard?` at the moment of the action - claiming a seat is
+  something you do standing there, unlike issuing an order once seated,
+  which trusts the stamp regardless of where you've since wandered.
+  `Crew.claim`/`Crew.release` hold the logic; the commands are thin
+  wrappers, same as everywhere else in this plugin.
+- **`space/crew` gained an owner exception.** It was admin-only; now
+  `check_can_assign` passes for admin *or* the target ship's `owner`.
+  Bumping someone already seated - as opposed to claiming an open one -
+  still isn't self-service for anyone else, by design.
+- **`Ships.ship_for_char` now prefers the stamp.** It used to be a flat
+  scan - `SpaceShip.all.select { stations include me }.first` - silently
+  arbitrary the moment a character held seats on two ships, which
+  self-service claiming makes an ordinary Tuesday instead of a staff
+  mistake. It now prefers `char.current_ship`, but only if that ship
+  still lists them in its `stations` - a character who boarded but never
+  claimed anything, or whose stamped ship somehow lost their seat, falls
+  back to the old scan rather than returning a ship they hold nothing on.
+  A destroyed `current_ship` is ignored the same way the old scan always
+  ignored inactive ships.
+
+198 specs pass (13 new: `crew_specs.rb` and `ships_specs.rb` -
+`current_ship`'s own coverage shipped with the stamp itself in §13).
+
 ## 14. Still to do
 
 - Carrier operations: launching and recovering fighters from the

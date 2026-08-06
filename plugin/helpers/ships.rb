@@ -41,11 +41,33 @@ module AresMUSH
         sector_ships(sector).select { |s| s.name.to_s.downcase == "#{name}".downcase }.first
       end
 
-      # The ship a character is currently crewing, if any.
+      # The ship a character's orders currently apply to.
+      #
+      # Prefers Character.current_ship - the ship they last boarded
+      # (Boarding.board), authoritative regardless of where they've
+      # physically wandered since - so long as they still hold a
+      # station there. That "still holds a station" check is what makes
+      # this safe now that a character can hold seats on more than one
+      # ship at once (fly the fighter, then go back to the capital):
+      # without it, the stamp alone can't tell "my active ship" from
+      # "a ship I boarded once and never claimed anything on."
+      #
+      # Falls back to the old full scan for a character who holds a
+      # station but never went through space/board at all - a staff
+      # assignment via space/crew made directly, or data from before
+      # this existed. That scan is what used to be the ONLY path, and
+      # picked whichever ship .first happened to return if a character
+      # held seats on more than one - silently wrong the moment
+      # self-service claiming made that reachable instead of
+      # theoretical.
       def self.ship_for_char(char)
         return nil if !char
-        key = "char:#{char.id}"
-        SpaceShip.all.select { |s| s.active? && s.stations.values.include?(key) }.first
+        key = Crew.char_key(char)
+
+        current = char.current_ship
+        return current if current && current.active? && current.stations.values.include?(key)
+
+        all_ships.select { |s| s.active? && s.stations.values.include?(key) }.first
       end
 
       def self.station_for_char(ship, char)
