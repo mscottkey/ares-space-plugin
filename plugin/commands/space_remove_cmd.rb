@@ -24,6 +24,7 @@ module AresMUSH
         return client.emit_failure t('space.ship_not_found', name: self.ship_name) if !ship
 
         name = ship.name
+        Docking.undock(ship)
         ship.delete
         client.emit_success t('space.ship_removed', name: name)
       end

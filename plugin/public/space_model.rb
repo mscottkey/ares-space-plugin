@@ -163,6 +163,13 @@ module AresMUSH
     # touch the core Character model.
     attribute :boarded_from, :type => DataType::Hash, :default => {}
 
+    # The "board me" exit at wherever this ship is CURRENTLY docked, if
+    # anywhere - see Docking. Tracked here rather than found by name/
+    # source each time because more than one ship can be docked at the
+    # same landing room at once, each with its own exit named after it;
+    # this is what tells undocking which one is this ship's to remove.
+    reference :dock_exit, "AresMUSH::Exit"
+
     def save_upcase
       self.name_upcase = self.name ? self.name.upcase : nil
     end
@@ -186,6 +193,13 @@ module AresMUSH
     attribute :body_key
     attribute :faction
     attribute :notes
+
+    # Optional. Most bodies are empty rock with nowhere to physically
+    # dock - this is only set for the ones staff have actually built a
+    # landing room for. A ship can still be "at" any body either way
+    # (that's just system_key/location_key); this only decides whether
+    # arriving there also opens a walk-in door (see Docking).
+    reference :landing_room, "AresMUSH::Room"
   end
 
   # Reopening core's Character, the same way fs3combat/places/scenes/

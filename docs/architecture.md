@@ -524,11 +524,14 @@ player; only staff or the owner can tag a room, checked via a
 ### What's deliberately not built yet
 
 - Exit retargeting so boarding is walking through a door instead of
-  typing a ship's name - `space/board` is a placeholder for that.
+  typing a ship's name - `space/board` is a placeholder for that. Done
+  in §13b, for any body staff has actually built a landing room at;
+  `space/board` stays as the fallback everywhere else.
 - Self-service station claiming, and the `Ships.ship_for_char` fix that
   has to ship alongside it once a character can hold a seat on more than
   one ship (`.first` on a hash scan is already technically wrong today,
-  just unreachable while only staff can create the ambiguity).
+  just unreachable while only staff can create the ambiguity). Done in
+  §13a.
 - Hangar bays / carrier launch-recovery, using the same retargeting
   mechanism recursively.
 
@@ -564,9 +567,74 @@ problem once more than one ship can be involved.
 198 specs pass (13 new: `crew_specs.rb` and `ships_specs.rb` -
 `current_ship`'s own coverage shipped with the stamp itself in §13).
 
+## 13b. Walking through a door (slice 3)
+
+`space/board <ship>` (§13) always worked, but it was a placeholder by
+design - it never cared whether the ship was actually anywhere you could
+plausibly walk in from. This slice is what makes boarding a real door
+instead of a command, for the bodies staff have actually built one at.
+
+Most bodies never get this - an unexplored rock has nowhere to dock, and
+that's fine. A ship is still "at" a body either way; that's just
+`system_key`/`location_key`, untouched by any of this. What's new only
+decides whether arriving somewhere *also* opens a walk-in door.
+
+- **`SpaceBodyState.landing_room`** - a body's optional dock, set by
+  staff standing in the room and running `space/dock <body>`
+  (`check_admin` - this is deciding a planet has a spaceport at all,
+  not something a ship's owner needs control over). Retroactive: any
+  ship already sitting there when the room gets tagged is docked
+  immediately, not just the next arrival.
+- **`SpaceShip.dock_exit`** - the door FROM the landing room INTO the
+  ship, at wherever it's currently docked. Recreated per visit, not
+  reused: more than one ship can be at the same landing room at once,
+  each needing its own exit, named after the ship itself (`go Talon
+  One`, not `go board ship`).
+- **The ship's own way out is different: one persistent exit, not
+  recreated.** `Docking.out_exit_for` creates it once, alongside
+  `entry_room`, and every dock/undock just retargets its destination.
+  There's only ever one destination that makes sense for a given ship
+  at a given moment, so recreating it every visit would just mean
+  churning object ids for no reason. Named "Out" on purpose - core's own
+  `Room#way_out`/`#out_exit` already look for exactly that name, so
+  whatever already consumes those keeps working with no special-casing
+  on our part.
+- **`Docking.dock` is safe to call unconditionally**, and does - from
+  `Systems.settle_arrival` (an ordinary arrival), `space_station_cmd.rb`
+  (a GM's direct placement), and `space/dock` itself (retroactively). It
+  clears any previous docking first, so a ship that skipped a proper
+  undock somewhere - a GM's `space/station` skipping the normal
+  departure path, say - can't leave a stale door open at the last place
+  it was. `Docking.undock` runs the moment a course is set
+  (`Systems.set_course`, before travel starts) and on `space/remove`,
+  so a ship in transit correctly has no door anywhere, and a deleted
+  ship doesn't leave one hanging.
+
+One gap surfaced while wiring this up, not introduced by it:
+`Systems.control_record`/`claim` had never actually been exercised in
+specs - `control_record`'s own `rescue => nil` was quietly swallowing
+the missing `SpaceBodyState` constant every time, and nothing had ever
+called `claim` (which has no rescue of its own) to notice `.create`
+would raise instead. `set_landing_room` calls the same `.create`, so the
+harness needed a real `SpaceBodyState` double before this could be
+tested at all - not something this slice broke, but something it made
+impossible to keep ignoring.
+
+207 specs pass (9 new: `docking_specs.rb`). The harness also gained
+`Exit` and `SpaceBodyState` doubles, both mirroring the same real APIs
+they stand in for rather than reinventing behavior.
+
 ## 14. Still to do
 
 - Carrier operations: launching and recovering fighters from the
-  Covenant's flight deck (`carrier` reference exists on the model) -
-  see §13, now that entry_room/operational_rooms exist to build it on.
+  Covenant's flight deck (`carrier` reference exists on the model) - see
+  §13/§13b, now that entry_room/operational_rooms/Docking exist to build
+  it on. The mechanism should be the same retargeting recursively
+  applied - a hangar bay is a landing room like any other, just one that
+  happens to belong to a ship instead of a body.
+- A "?" indicator somewhere a character's status is shown, for when
+  `Character.current_ship` and `Boarding.aboard?` disagree (see §13) -
+  flagged as a real gap when the stamp was designed, not yet built
+  because nothing displays a character's location today for it to
+  attach to.
 - Pseudo-real-time tick (§9), after the POC has been played.

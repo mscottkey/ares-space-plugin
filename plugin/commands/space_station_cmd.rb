@@ -45,6 +45,7 @@ module AresMUSH
 
         ship.update(system_key: "#{key}", location_key: body["key"],
                     destination_key: nil, departed_at: nil, travel_seconds: 0)
+        Docking.dock(ship)
 
         client.emit_success t('space.ship_stationed',
           name: ship.name, body: body["name"] || body["key"],

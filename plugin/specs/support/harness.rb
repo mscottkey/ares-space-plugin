@@ -130,6 +130,12 @@ module AresMUSH
       self.id = (@@next_id += 1).to_s
       self.name = name
     end
+
+    def get_exit(name)
+      (Exit.registry || {}).values.find do |e|
+        e.source == self && e.name.to_s.upcase == "#{name}".upcase
+      end
+    end
   end
 
   module Room
@@ -149,6 +155,92 @@ module AresMUSH
 
       def reset!
         self.registry = {}
+      end
+    end
+  end
+
+  # Mirrors core's Exit model closely enough for Docking's specs -
+  # named, one-directional, source/dest are plain Room references.
+  class TestExit
+    attr_accessor :id, :name, :source, :dest
+    @@next_id = 1
+
+    def initialize(opts = {})
+      self.id = (@@next_id += 1).to_s
+      self.name = opts[:name]
+      self.source = opts[:source]
+      self.dest = opts[:dest]
+    end
+
+    def update(attrs)
+      attrs.each { |k, v| send("#{k}=", v) }
+      self
+    end
+
+    def delete
+      (Exit.registry || {}).delete(self.id)
+    end
+  end
+
+  module Exit
+    class << self
+      attr_accessor :registry
+
+      def create(opts = {})
+        exit = TestExit.new(opts)
+        self.registry ||= {}
+        self.registry[exit.id] = exit
+        exit
+      end
+
+      def [](id)
+        (self.registry || {})["#{id}"]
+      end
+
+      def reset!
+        self.registry = {}
+      end
+    end
+  end
+
+  class TestBodyState
+    attr_accessor :id, :system_key, :body_key, :faction, :notes, :landing_room
+    @@next_id = 1
+
+    def initialize(opts = {})
+      self.id = (@@next_id += 1).to_s
+      self.system_key = opts[:system_key]
+      self.body_key = opts[:body_key]
+      self.faction = opts[:faction]
+      self.notes = opts[:notes]
+      self.landing_room = opts[:landing_room]
+    end
+
+    def update(attrs)
+      attrs.each { |k, v| send("#{k}=", v) }
+      self
+    end
+  end
+
+  # No real Redis-backed SpaceBodyState existed in the harness before
+  # Docking needed one - Systems.claim/control_record had only ever been
+  # exercised through the rescue => nil in control_record, which quietly
+  # swallowed the missing constant. set_landing_room and claim both call
+  # SpaceBodyState.create directly, with no rescue of their own, so
+  # without this they'd raise in specs instead of being tested.
+  module SpaceBodyState
+    class << self
+      attr_accessor :all
+
+      def create(opts = {})
+        record = TestBodyState.new(opts)
+        self.all ||= []
+        self.all << record
+        record
+      end
+
+      def reset!
+        self.all = []
       end
     end
   end
@@ -194,7 +286,7 @@ module AresMUSH
     ATTRS = [ :id, :name, :ship_class, :faction, :x, :y, :facing, :speed,
               :sections, :stations, :orders, :ammo, :evade_margin,
               :sweep_range, :status, :sector, :entry_room, :operational_rooms,
-              :owner, :boarded_from ]
+              :owner, :boarded_from, :system_key, :location_key, :dock_exit ]
     attr_accessor(*ATTRS)
 
     def initialize(opts = {})
@@ -216,6 +308,9 @@ module AresMUSH
       self.operational_rooms = opts[:operational_rooms] || []
       self.owner = opts[:owner]
       self.boarded_from = opts[:boarded_from] || {}
+      self.system_key = opts[:system_key]
+      self.location_key = opts[:location_key]
+      self.dock_exit = opts[:dock_exit]
       class_data = Space::SpaceConfig.ship_class(self.ship_class) || {}
       self.sections = opts[:sections] || Space::Ships.build_sections(class_data)
       self.ammo = opts[:ammo] || Space::Ships.build_ammo(class_data)

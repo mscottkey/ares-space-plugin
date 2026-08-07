@@ -77,6 +77,8 @@ module AresMUSH
           return SpaceAnchorCmd
         when 'station'
           return SpaceStationCmd
+        when 'dock'
+          return SpaceDockCmd
         when 'start'
           return SpaceStartCmd
         when 'resolve'

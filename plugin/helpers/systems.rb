@@ -123,6 +123,22 @@ module AresMUSH
         end
       end
 
+      def self.landing_room_for(system_key, body_key)
+        record = control_record(system_key, body_key)
+        record ? record.landing_room : nil
+      end
+
+      def self.set_landing_room(system_key, body_key, room)
+        record = control_record(system_key, body_key)
+        if record
+          record.update(landing_room: room)
+        else
+          SpaceBodyState.create(system_key: "#{system_key}",
+                                body_key: "#{body_key}",
+                                landing_room: room)
+        end
+      end
+
       # ---------------------------------------------------------------
       # Ships in the system
       # ---------------------------------------------------------------
@@ -159,6 +175,7 @@ module AresMUSH
           departed_at: nil,
           travel_seconds: 0
         )
+        Docking.dock(ship)
         true
       end
 
@@ -196,6 +213,7 @@ module AresMUSH
           departed_at: Time.now,
           travel_seconds: seconds
         )
+        Docking.undock(ship)
 
         success(t('space.course_set',
           ship: ship.name,
