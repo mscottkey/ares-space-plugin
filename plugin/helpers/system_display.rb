@@ -16,7 +16,7 @@ module AresMUSH
         Systems.settle_arrivals(system_key)
 
         lines = []
-        lines << "%xh#{data['name']}%xn %xk(#{data.dig('star', 'name')}, #{data.dig('star', 'spectral')}-class)%xn"
+        lines << "%xh#{data['name']}%xn %xx(#{data.dig('star', 'name')}, #{data.dig('star', 'spectral')}-class)%xn"
         lines << ""
 
         if viewer_ship

@@ -195,7 +195,7 @@ module AresMUSH
 
         report[:attacks].each do |a|
           if a[:error]
-            lines << "%xk#{t('space.report_attack_failed', attacker: a[:attacker], target: a[:target], reason: a[:error])}%xn"
+            lines << "%xx#{t('space.report_attack_failed', attacker: a[:attacker], target: a[:target], reason: a[:error])}%xn"
           elsif !a[:hit]
             lines << t('space.report_miss', attacker: a[:attacker], weapon: a[:weapon],
                        target: a[:target], successes: a[:successes], evade: a[:evade])
@@ -219,7 +219,7 @@ module AresMUSH
           lines << "%xr*** #{t('space.report_destroyed', ship: name)} ***%xn"
         end
 
-        lines << "%xk#{t('space.no_activity')}%xn" if lines.count == 1
+        lines << "%xx#{t('space.no_activity')}%xn" if lines.count == 1
         lines.join("\n")
       end
     end
