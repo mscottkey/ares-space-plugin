@@ -11,15 +11,15 @@ module AresMUSH
       include CommandHandler
 
       def check_can_tag
-        ship = Boarding.ship_for_room(enactor.room)
-        return t('space.not_aboard', ship: t('space.deep_space')) if !ship
+        ship = enactor.current_ship
+        return t('space.not_boarded') if !ship
         return nil if enactor.is_admin?
         return nil if ship.owner && ship.owner.id.to_s == enactor.id.to_s
         t('space.not_ship_owner', ship: ship.name)
       end
 
       def handle
-        ship = Boarding.ship_for_room(enactor.room)
+        ship = enactor.current_ship
         result = Boarding.tag_room(ship, enactor.room)
         return client.emit_failure result[:error] if result[:error]
         client.emit_success result[:message]
