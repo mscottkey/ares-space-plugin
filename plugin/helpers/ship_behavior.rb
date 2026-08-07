@@ -47,6 +47,14 @@ module AresMUSH
         (class_data["agility"] || 0).to_i
       end
 
+      # Can this ship carry small craft docked inside it? A design-time
+      # choice per class (space_ships.yml), not something that follows
+      # automatically from size - a large freighter with no flight deck
+      # built in shouldn't suddenly be able to carry fighters.
+      def hangar?
+        !!class_data["hangar"]
+      end
+
       def hardpoints
         class_data["hardpoints"] || []
       end

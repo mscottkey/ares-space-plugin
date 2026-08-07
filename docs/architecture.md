@@ -624,14 +624,46 @@ impossible to keep ignoring.
 `Exit` and `SpaceBodyState` doubles, both mirroring the same real APIs
 they stand in for rather than reinventing behavior.
 
+## 13c. Carrier launch and recovery (slice 4)
+
+The prediction in §13b held: a hangar bay needed no new mechanism, just
+the existing one pointed at a room that belongs to a ship instead of a
+body.
+
+- **`hangar: true` in `space_ships.yml`** - a design-time choice per
+  class, not a size threshold. The Covenant already had a `port` section
+  flavored as `flight_deck`; this is that flavor becoming mechanical.
+  `ShipBehavior#hangar?` reads it.
+- **`SpaceShip.hangar_room`** - a carrier's own landing room, created
+  lazily on first use exactly like `entry_room`. A class with no flight
+  deck never gets one, and `Docking.hangar_room_for` returns nil rather
+  than create one regardless of what a command forgot to check.
+- **`Docking.landing_room_for(ship)`** is the one seam that makes
+  everything else free: it checks `ship.carrier` first, and only falls
+  back to a body's landing room if there isn't one. `dock`/`undock`
+  never needed to change - they already just ask "where does this ship
+  dock" and retarget exits accordingly, so a hangared fighter docks
+  through the exact same code path a ship docks at a body through.
+- **`space/land <carrier>`** / **`space/launch`** - `Docking.land`
+  requires the target actually have a flight deck, that the boarding
+  ship isn't already docked somewhere, that neither ship is in a
+  tactical sector (deliberately out of scope - this never touches the
+  resolver's turn structure), and that both are at the same
+  system/body. On success the fighter's `system_key`/`location_key` are
+  cleared, not synced to the carrier's - a hangared ship's position IS
+  "wherever the carrier is," not a second copy of that fact to drift out
+  of step. `launch` reverses it, reading the carrier's *current*
+  position (which may have moved while the fighter sat docked) rather
+  than wherever it was at landing.
+
+220 specs pass (13 new, appended to `docking_specs.rb`). Also gave
+`TestShip` three fields it turned out it had never had -
+`destination_key`/`departed_at`/`travel_seconds` - and an `in_transit?`
+to match: nothing had ever needed a ship's own travel state in a spec
+before `land` needed to clear it.
+
 ## 14. Still to do
 
-- Carrier operations: launching and recovering fighters from the
-  Covenant's flight deck (`carrier` reference exists on the model) - see
-  §13/§13b, now that entry_room/operational_rooms/Docking exist to build
-  it on. The mechanism should be the same retargeting recursively
-  applied - a hangar bay is a landing room like any other, just one that
-  happens to belong to a ship instead of a body.
 - A "?" indicator somewhere a character's status is shown, for when
   `Character.current_ship` and `Boarding.aboard?` disagree (see §13) -
   flagged as a real gap when the stamp was designed, not yet built

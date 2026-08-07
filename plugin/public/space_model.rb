@@ -170,6 +170,13 @@ module AresMUSH
     # this is what tells undocking which one is this ship's to remove.
     reference :dock_exit, "AresMUSH::Exit"
 
+    # A landing room that belongs to THIS ship rather than to a body -
+    # only meaningful if class_data["hangar"] is true (see
+    # ShipBehavior#hangar?). Created lazily on first use, same as
+    # entry_room; a fighter or a freighter with no flight deck never
+    # gets one.
+    reference :hangar_room, "AresMUSH::Room"
+
     def save_upcase
       self.name_upcase = self.name ? self.name.upcase : nil
     end

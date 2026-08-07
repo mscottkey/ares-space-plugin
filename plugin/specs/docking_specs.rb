@@ -6,12 +6,16 @@ module AresMUSH
 
       let(:system_key) { "covenant_reach" }
 
-      def spawn(name)
-        s = TestShip.new(id: TestWorld.ships.count + 1, name: name, ship_class: "Talon")
+      def spawn(name, ship_class = "Talon")
+        s = TestShip.new(id: TestWorld.ships.count + 1, name: name, ship_class: ship_class)
         s.system_key = system_key
         s.location_key = "p1"
         TestWorld.ships << s
         s
+      end
+
+      def spawn_carrier(name)
+        spawn(name, "Covenant")
       end
 
       describe :dock do
@@ -109,6 +113,130 @@ module AresMUSH
           ship = spawn("Talon One")
           expect(ship.entry_room).to be_nil
           expect { Docking.undock(ship) }.not_to raise_error
+        end
+      end
+
+      describe :hangar_room_for do
+        it "is nil for a class with no flight deck" do
+          fighter = spawn("Talon One")
+          expect(Docking.hangar_room_for(fighter)).to be_nil
+        end
+
+        it "creates one lazily for a hangar-capable class" do
+          carrier = spawn_carrier("Covenant")
+          room = Docking.hangar_room_for(carrier)
+          expect(room.name).to eq "Covenant (Flight Deck)"
+          expect(carrier.hangar_room).to eq room
+        end
+
+        it "doesn't create a second one on a later call" do
+          carrier = spawn_carrier("Covenant")
+          first = Docking.hangar_room_for(carrier)
+          expect(Docking.hangar_room_for(carrier)).to eq first
+        end
+      end
+
+      describe :land do
+        it "refuses a carrier with no flight deck" do
+          fighter = spawn("Talon One")
+          not_a_carrier = spawn("Talon Two")
+          result = Docking.land(fighter, not_a_carrier)
+          expect(result[:ok]).to be false
+        end
+
+        it "refuses if not at the same position" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          carrier.location_key = "p2"
+          result = Docking.land(fighter, carrier)
+          expect(result[:ok]).to be false
+        end
+
+        it "refuses if either ship is in a tactical sector" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          fighter.sector = TestSector.new(id: 9)
+          result = Docking.land(fighter, carrier)
+          expect(result[:ok]).to be false
+        end
+
+        it "refuses a ship that's already docked" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          Docking.land(fighter, carrier)
+          result = Docking.land(fighter, carrier)
+          expect(result[:ok]).to be false
+        end
+
+        it "docks the fighter and opens a door from the hangar" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+
+          result = Docking.land(fighter, carrier)
+
+          expect(result[:ok]).to be true
+          expect(fighter.carrier).to eq carrier
+          expect(fighter.dock_exit.source).to eq carrier.hangar_room
+          expect(fighter.dock_exit.dest).to eq fighter.entry_room
+        end
+
+        it "clears the fighter's independent position - it has none while hangared" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+
+          Docking.land(fighter, carrier)
+
+          expect(fighter.system_key).to be_nil
+          expect(fighter.location_key).to be_nil
+        end
+      end
+
+      describe :launch do
+        it "refuses a ship that isn't docked anywhere" do
+          fighter = spawn("Talon One")
+          result = Docking.launch(fighter)
+          expect(result[:ok]).to be false
+        end
+
+        it "restores the fighter's position to wherever the carrier currently is" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          Docking.land(fighter, carrier)
+
+          carrier.system_key = system_key
+          carrier.location_key = "p3"   # carrier moved on while the fighter was docked
+
+          result = Docking.launch(fighter)
+
+          expect(result[:ok]).to be true
+          expect(fighter.system_key).to eq system_key
+          expect(fighter.location_key).to eq "p3"
+        end
+
+        it "clears the carrier reference and closes the door - a flying ship has none" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          Docking.land(fighter, carrier)
+          dock_exit_id = fighter.dock_exit.id
+
+          Docking.launch(fighter)
+
+          expect(fighter.carrier).to be_nil
+          expect(fighter.dock_exit).to be_nil
+          expect(Exit[dock_exit_id]).to be_nil
+          expect(fighter.entry_room.get_exit("Out").dest).to be_nil
+        end
+
+        it "lands again cleanly after launching" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          Docking.land(fighter, carrier)
+          Docking.launch(fighter)
+
+          result = Docking.land(fighter, carrier)
+
+          expect(result[:ok]).to be true
+          expect(fighter.carrier).to eq carrier
         end
       end
     end

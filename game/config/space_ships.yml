@@ -59,6 +59,7 @@ space:
       silhouette: 8
       speed: 1
       agility: 0
+      hangar: true   # can carry docked small craft - port section is flight_deck
       stations: [ helm, gunnery, engineering, sensors, flight_ops ]
       sections:
         fore:

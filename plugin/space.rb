@@ -57,6 +57,10 @@ module AresMUSH
           return SpaceTakeCmd
         when 'leave'
           return SpaceLeaveCmd
+        when 'land'
+          return SpaceLandCmd
+        when 'launch'
+          return SpaceLaunchCmd
 
         # GM
         when 'sector'

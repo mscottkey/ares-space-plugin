@@ -12,7 +12,37 @@ module AresMUSH
     # is still "at" one either way (that's just system_key/location_key
     # on the ship, untouched by any of this). This only ever decides
     # whether arriving there also opens a walk-in door.
+    #
+    # A hangared small craft reuses every bit of this: the room it docks
+    # into just happens to belong to a ship (carrier.hangar_room) rather
+    # than a body. See landing_room_for.
     module Docking
+
+      # Where a ship is docked, if anywhere - a carrier's hangar_room if
+      # it's parked inside one, otherwise whatever landing room its
+      # current body has (which may be none). A hangared craft has no
+      # system_key/location_key of its own (see land/launch below), so
+      # checking carrier first isn't just an optimization - it's the
+      # only path that means anything for it.
+      def self.landing_room_for(ship)
+        return hangar_room_for(ship.carrier) if ship.carrier
+        Systems.landing_room_for(ship.system_key, ship.location_key)
+      end
+
+      # A carrier's own hangar, created lazily the first time something
+      # actually docks in it - same reasoning as entry_room: most ships,
+      # even hangar-capable ones, spend a test fight never using it.
+      # Returns nil for a class with no flight deck at all; nothing
+      # should be landing there regardless of what a command forgot to
+      # check.
+      def self.hangar_room_for(carrier)
+        return nil if !carrier.hangar?
+        return carrier.hangar_room if carrier.hangar_room
+
+        room = Room.create(name: "#{carrier.name} (Flight Deck)")
+        carrier.update(hangar_room: room)
+        room
+      end
 
       # The ship's own way out. Created once, alongside entry_room, and
       # retargeted on every dock/undock rather than recreated - there's
@@ -33,13 +63,14 @@ module AresMUSH
       # at the same landing room at once, each needing its own door.
       #
       # Safe to call unconditionally whenever a ship's position changes,
-      # arrival or a GM's direct placement alike - it clears any
-      # previous docking first, so a ship that skipped a proper undock
-      # can't leave a stale door open at the last place it was.
+      # arrival, a GM's direct placement, or landing in a hangar alike -
+      # it clears any previous docking first, so a ship that skipped a
+      # proper undock can't leave a stale door open at the last place it
+      # was.
       def self.dock(ship)
         undock(ship)
 
-        room = Systems.landing_room_for(ship.system_key, ship.location_key)
+        room = landing_room_for(ship)
         return if !room
 
         out_exit_for(ship).update(dest: room)
@@ -49,7 +80,9 @@ module AresMUSH
       # Closes the door both ways. Called on departure (before travel
       # starts) as well as defensively at the top of dock - between
       # those two, a ship in transit correctly has no door anywhere,
-      # the same way it has no location_key worth reading.
+      # the same way it has no location_key worth reading. Also what a
+      # freshly launched fighter goes through: flying, it has no door,
+      # the same as a ship in transit between bodies.
       def self.undock(ship)
         out = ship.entry_room ? ship.entry_room.get_exit("Out") : nil
         out.update(dest: nil) if out
@@ -57,6 +90,52 @@ module AresMUSH
         return if !ship.dock_exit
         ship.dock_exit.delete
         ship.update(dock_exit: nil)
+      end
+
+      # ---------------------------------------------------------------
+      # Carrier launch/recovery
+      # ---------------------------------------------------------------
+      #
+      # Deliberately outside a tactical sector: neither of these touches
+      # the resolver's turn structure, so both refuse while either ship
+      # is in an active engagement rather than get tangled in it. A
+      # hangared craft has no system_key/location_key of its own - its
+      # position IS "wherever the carrier is," not a second copy of that
+      # fact to keep in sync.
+
+      def self.land(ship, carrier)
+        return failure(t('space.not_a_carrier', name: carrier.name)) if !carrier.hangar?
+        return failure(t('space.already_docked', ship: ship.name)) if ship.carrier
+        return failure(t('space.ship_in_combat', ship: ship.name)) if ship.sector || carrier.sector
+        return failure(t('space.not_together', ship: ship.name, carrier: carrier.name)) if !same_position?(ship, carrier)
+
+        ship.update(carrier: carrier, system_key: nil, location_key: nil,
+                    destination_key: nil, departed_at: nil, travel_seconds: 0)
+        dock(ship)
+        success(t('space.landed', ship: ship.name, carrier: carrier.name))
+      end
+
+      def self.launch(ship)
+        return failure(t('space.not_docked', ship: ship.name)) if !ship.carrier
+
+        carrier = ship.carrier
+        ship.update(carrier: nil, system_key: carrier.system_key, location_key: carrier.location_key)
+        undock(ship)
+        success(t('space.launched', ship: ship.name, carrier: carrier.name))
+      end
+
+      def self.same_position?(ship, carrier)
+        !ship.system_key.to_s.empty? &&
+          ship.system_key.to_s == carrier.system_key.to_s &&
+          ship.location_key.to_s == carrier.location_key.to_s
+      end
+
+      def self.success(message)
+        { ok: true, message: message, error: nil }
+      end
+
+      def self.failure(error)
+        { ok: false, message: nil, error: error }
       end
     end
   end

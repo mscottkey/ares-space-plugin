@@ -286,7 +286,9 @@ module AresMUSH
     ATTRS = [ :id, :name, :ship_class, :faction, :x, :y, :facing, :speed,
               :sections, :stations, :orders, :ammo, :evade_margin,
               :sweep_range, :status, :sector, :entry_room, :operational_rooms,
-              :owner, :boarded_from, :system_key, :location_key, :dock_exit ]
+              :owner, :boarded_from, :system_key, :location_key, :dock_exit,
+              :carrier, :hangar_room, :destination_key, :departed_at,
+              :travel_seconds ]
     attr_accessor(*ATTRS)
 
     def initialize(opts = {})
@@ -311,6 +313,8 @@ module AresMUSH
       self.system_key = opts[:system_key]
       self.location_key = opts[:location_key]
       self.dock_exit = opts[:dock_exit]
+      self.carrier = opts[:carrier]
+      self.hangar_room = opts[:hangar_room]
       class_data = Space::SpaceConfig.ship_class(self.ship_class) || {}
       self.sections = opts[:sections] || Space::Ships.build_sections(class_data)
       self.ammo = opts[:ammo] || Space::Ships.build_ammo(class_data)
@@ -323,6 +327,10 @@ module AresMUSH
 
     def sector_id
       sector ? sector.id : nil
+    end
+
+    def in_transit?
+      !self.destination_key.to_s.empty? && !self.departed_at.nil?
     end
   end
 
