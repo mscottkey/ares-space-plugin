@@ -137,6 +137,14 @@ module AresMUSH
       end
 
       describe :land do
+        it "refuses a ship landing on itself, rather than docking it inside its own hangar" do
+          carrier = spawn_carrier("Covenant")
+          result = Docking.land(carrier, carrier)
+          expect(result[:ok]).to be false
+          expect(carrier.carrier).to be_nil
+          expect(carrier.system_key).to eq system_key
+        end
+
         it "refuses a carrier with no flight deck" do
           fighter = spawn("Talon One")
           not_a_carrier = spawn("Talon Two")

@@ -682,6 +682,35 @@ so nothing had ever exercised "is there really a fight going on" versus
 had only ever driven directly, bypassing `SpaceCombat.all` entirely),
 and `docking_specs.rb` gained a spec for each half of the distinction.
 
+**Second bug, same source:** `Docking.land` never checked `ship` and
+`carrier` for being the same ship. A character crewing the carrier
+itself who runs `space/land <own ship>` sailed straight through
+`same_position?` - trivially true against yourself - and got
+`ship.update(carrier: carrier, system_key: nil, location_key: nil, ...)`
+applied to the carrier's own record: `carrier: self`, its own position
+cleared, hangared inside its own hangar. Nothing after that point in the
+resolver code has a way to tell that apart from a real hangared
+fighter, and it isn't cleanly reversible by `space/launch` either -
+`launch` reads `carrier.system_key`/`location_key` to restore the
+docked ship's position, but here `carrier` *is* the ship, so by the time
+`launch` reads it, its own position has already been nil'd by `land`.
+Recovering a ship caught in this state needs a GM to reset it directly
+with `space/station <ship>=<system>/<body>`, not `space/launch` - and
+that only works because `space/station` was also fixed here to clear
+`carrier: nil` unconditionally on a direct placement. It didn't before:
+`Docking.dock` prefers `hangar_room_for(ship.carrier)` over the
+system/body landing room whenever `carrier` is set, so a station command
+that left a stale `carrier` in place (self-referential or otherwise)
+would silently re-dock the ship into that hangar and ignore the
+system_key/location_key it had just been given. A GM placement is
+authoritative and should never leave a ship both "at a body" and
+"inside a carrier" at once - that combination isn't one the rest of
+`Docking` expects.
+
+`Docking.land` now also refuses up front (`space.cannot_land_on_self`)
+if `ship.id == carrier.id`, before any state changes, so this can't
+happen again going forward.
+
 ## 14. Still to do
 
 - A "?" indicator somewhere a character's status is shown, for when

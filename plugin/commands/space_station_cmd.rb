@@ -43,8 +43,15 @@ module AresMUSH
         body = Systems.body(key, wanted_body)
         return client.emit_failure t('space.no_such_body', name: wanted_body) if !body
 
+        # A direct GM placement is authoritative: it always leaves the
+        # ship with an independent position, even if it was hangared
+        # (or, worst case, self-hangared - see Docking.land) beforehand.
+        # Without clearing carrier here, Docking.dock below would still
+        # route through hangar_room_for(ship.carrier) and ignore the
+        # system_key/location_key just set.
         ship.update(system_key: "#{key}", location_key: body["key"],
-                    destination_key: nil, departed_at: nil, travel_seconds: 0)
+                    destination_key: nil, departed_at: nil, travel_seconds: 0,
+                    carrier: nil)
         Docking.dock(ship)
 
         client.emit_success t('space.ship_stationed',

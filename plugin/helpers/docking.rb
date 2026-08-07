@@ -104,6 +104,14 @@ module AresMUSH
       # fact to keep in sync.
 
       def self.land(ship, carrier)
+        # Without this, a character crewing the carrier itself
+        # (space/land <own ship>) sails straight through same_position? -
+        # trivially true against yourself - and sets carrier: self,
+        # clearing its own system_key/location_key in the process. That's
+        # not a hangared ship anymore, it's a ship whose position is
+        # itself; nothing after this point can distinguish that from
+        # every other checked precondition, so it has to be caught first.
+        return failure(t('space.cannot_land_on_self', ship: ship.name)) if ship.id.to_s == carrier.id.to_s
         return failure(t('space.not_a_carrier', name: carrier.name)) if !carrier.hangar?
         return failure(t('space.already_docked', ship: ship.name)) if ship.carrier
         return failure(t('space.ship_in_combat', ship: ship.name)) if Engagements.combat_for_ship(ship) || Engagements.combat_for_ship(carrier)
