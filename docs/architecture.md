@@ -646,9 +646,9 @@ body.
   through the exact same code path a ship docks at a body through.
 - **`space/land <carrier>`** / **`space/launch`** - `Docking.land`
   requires the target actually have a flight deck, that the boarding
-  ship isn't already docked somewhere, that neither ship is in a
-  tactical sector (deliberately out of scope - this never touches the
-  resolver's turn structure), and that both are at the same
+  ship isn't already docked somewhere, that neither ship is in an
+  *active tactical engagement* (deliberately out of scope - this never
+  touches the resolver's turn structure), and that both are at the same
   system/body. On success the fighter's `system_key`/`location_key` are
   cleared, not synced to the carrier's - a hangared ship's position IS
   "wherever the carrier is," not a second copy of that fact to drift out
@@ -661,6 +661,26 @@ body.
 `destination_key`/`departed_at`/`travel_seconds` - and an `in_transit?`
 to match: nothing had ever needed a ship's own travel state in a spec
 before `land` needed to clear it.
+
+**Bug found smoke-testing on a live server, fixed after the fact:** the
+"active engagement" check above originally read `ship.sector ||
+carrier.sector` - truthy for *any* ship that had ever been assigned a
+sector, not just one currently fighting in it. That's every ship that
+exists: `space/spawn` requires a sector argument, and nothing anywhere
+in the plugin ever clears `SpaceShip.sector` afterward - `space/station`
+and the travel system move a ship between system bodies without
+touching it. So `space/land` refused unconditionally, on every ship, the
+moment it left the sector it was born in. `Systems.set_course` already
+had the right idiom for this exact question -
+`Engagements.active_combat(ship.sector)`, not `ship.sector` alone -
+`Docking.land` now uses `Engagements.combat_for_ship` to match. Same gap
+as `SpaceBodyState` in §13b: `Engagements.sector_combats`'s own `rescue
+=> nil` had quietly swallowed a missing `SpaceCombat` harness double,
+so nothing had ever exercised "is there really a fight going on" versus
+"was this ship ever in a sector at all." The harness now has a
+`SpaceCombat` double (mirroring `TestCombat`, which `resolver_specs.rb`
+had only ever driven directly, bypassing `SpaceCombat.all` entirely),
+and `docking_specs.rb` gained a spec for each half of the distinction.
 
 ## 14. Still to do
 

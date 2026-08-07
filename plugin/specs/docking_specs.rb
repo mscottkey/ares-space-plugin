@@ -152,12 +152,30 @@ module AresMUSH
           expect(result[:ok]).to be false
         end
 
-        it "refuses if either ship is in a tactical sector" do
+        it "refuses if either ship is in an active tactical engagement" do
           fighter = spawn("Talon One")
           carrier = spawn_carrier("Covenant")
-          fighter.sector = TestSector.new(id: 9)
+          combat_sector = TestSector.new(id: 9)
+          fighter.sector = combat_sector
+          SpaceCombat.create(sector: combat_sector, state: "active")
+
           result = Docking.land(fighter, carrier)
+
           expect(result[:ok]).to be false
+        end
+
+        it "does not refuse just because a ship was once spawned into a sector - only an active fight there blocks it" do
+          fighter = spawn("Talon One")
+          carrier = spawn_carrier("Covenant")
+          # Every ship gets a sector at spawn (space/spawn requires one),
+          # but nothing ever clears it once travel takes over via
+          # system_key/location_key - so a stale sector reference with no
+          # active combat in it must not be mistaken for "in a fight."
+          fighter.sector = TestSector.new(id: 9)
+
+          result = Docking.land(fighter, carrier)
+
+          expect(result[:ok]).to be true
         end
 
         it "refuses a ship that's already docked" do

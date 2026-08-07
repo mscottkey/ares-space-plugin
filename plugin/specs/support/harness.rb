@@ -336,12 +336,18 @@ module AresMUSH
 
   class TestCombat
     attr_accessor :id, :sector, :round, :state, :log, :last_report
+    @@next_id = 1
+
     def initialize(sector)
-      self.id = 1
+      self.id = (@@next_id += 1).to_s
       self.sector = sector
       self.round = 0
       self.state = "active"
       self.log = []
+    end
+
+    def sector_id
+      sector ? sector.id : nil
     end
 
     def update(attrs)
@@ -355,6 +361,32 @@ module AresMUSH
 
     def add_log(msg)
       self.log << "R#{round}: #{msg}"
+    end
+  end
+
+  # No real Redis-backed SpaceCombat existed in the harness before this -
+  # Engagements.sector_combats/active_combat had only ever been exercised
+  # through the rescue => nil in sector_combats, which quietly swallowed
+  # the missing constant. Docking.land/launch's "is this ship in an
+  # active engagement" check calls Engagements.combat_for_ship, which
+  # depends on the same path - without this double it would silently
+  # never trigger in specs, the same blind spot SpaceBodyState closed
+  # for Systems.claim above.
+  module SpaceCombat
+    class << self
+      attr_accessor :all
+
+      def create(opts = {})
+        combat = TestCombat.new(opts[:sector])
+        combat.update(opts.reject { |k, _| k == :sector })
+        self.all ||= []
+        self.all << combat
+        combat
+      end
+
+      def reset!
+        self.all = []
+      end
     end
   end
 

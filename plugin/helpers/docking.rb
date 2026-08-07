@@ -106,7 +106,7 @@ module AresMUSH
       def self.land(ship, carrier)
         return failure(t('space.not_a_carrier', name: carrier.name)) if !carrier.hangar?
         return failure(t('space.already_docked', ship: ship.name)) if ship.carrier
-        return failure(t('space.ship_in_combat', ship: ship.name)) if ship.sector || carrier.sector
+        return failure(t('space.ship_in_combat', ship: ship.name)) if Engagements.combat_for_ship(ship) || Engagements.combat_for_ship(carrier)
         return failure(t('space.not_together', ship: ship.name, carrier: carrier.name)) if !same_position?(ship, carrier)
 
         ship.update(carrier: carrier, system_key: nil, location_key: nil,

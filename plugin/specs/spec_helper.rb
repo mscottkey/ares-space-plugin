@@ -14,5 +14,6 @@ RSpec.configure do |config|
     AresMUSH::Rooms.reset!
     AresMUSH::Exit.reset!
     AresMUSH::SpaceBodyState.reset!
+    AresMUSH::SpaceCombat.reset!
   end
 end
