@@ -711,6 +711,97 @@ authoritative and should never leave a ship both "at a body" and
 if `ship.id == carrier.id`, before any state changes, so this can't
 happen again going forward.
 
+## 13d. Ring-anchored ships, and the system map's ship markers
+
+Two related product problems, reported from the same screenshot: a
+ship's map marker never tracked the body it was parked at (it sat at a
+coordinate snapshot from whenever the page last loaded, while the
+body's own decorative CSS spin animation kept sweeping around it - the
+body visibly drifted away from its own "parked" ship), and there was no
+way to represent a ship holding position with no body under it at all -
+a capital ship staging between planets, or a station - since every
+ship's position was always `location_key`, a body key, full stop.
+
+**Position model.** `SpaceShip` gained `system_ring`
+(`DataType::Integer`) and `system_angle` (`DataType::Float`) -
+mutually exclusive with `location_key`, the same invariant shape as
+`carrier` vs. an independent position from §13c. No config gives a
+ring-parked ship's angle the way a body's does, so `Systems.
+ring_angle_for(ship)` just spreads ships around the ring
+deterministically (`ship.id * 47 % 360`) rather than stacking them all
+on the +x axis.
+
+**Command surface.** Both `space/station <ship>=<system>/<n>` and
+`space/travel <n>` treat a bare integer as a ring rather than a body -
+`Systems.parse_ring` is the one place that distinction gets made.
+Internally, a ring destination is encoded as `"ring:<n>"` in
+`destination_key`, the same string field a body key already uses,
+rather than a second parallel set of transit fields - `Systems.
+ring_key`/`ring_from_key` convert at the two edges (`set_course` writes
+it, `settle_arrival` reads it back to decide whether a completed trip
+lands the ship on a body or a bare ring).
+
+**Which ships get a map marker.** This is the actual fix for the
+reported bug, and it's a filter, not an animation patch: `WebData.
+system_ship_entries` only marks a ship that's under way, ring-anchored,
+or present at a body with an *active engagement* there. A ship simply
+parked at a body with nothing going on gets no marker at all - it's
+already visible through that body's own `ships` list, the "Present"
+panel, and the Bodies table's Ships column, and drawing a second,
+independently-positioned dot for it was the bug, not a feature to
+preserve. `ship_map_entry` itself still computes a position/status for
+*every* ship regardless of this filter, because `own_ship` (the
+toolbar's "holding at X" line) needs one even for the excluded,
+peaceful-parked case - the filter lives one level up, in
+`system_ship_entries`, precisely so `own_ship` doesn't go through it.
+
+**Where the surviving markers live.** An engaged ship is nested inside
+its body's own `<g>` in `body_map_entry`'s `engaged_ships` (only
+populated when the body actually is engaged, empty otherwise), and
+`space-system-map.js`'s `dockedShips` places it exactly like a moon -
+a small fixed offset from the body's resting point, riding the same
+spin+start transform, with the same two-angle counter-rotation to keep
+its label level. A ring-anchored ship has no body to nest inside, so it
+gets its own animated group (`ringShips`) structured exactly like a
+lone body's spin/start/counter/unstart chain, just ship-styled. Both
+reuse the `.space-orbit-spin`/`.space-orbit-counter` CSS classes
+verbatim - no new stylesheet needed. The flat `space-system-ships`
+layer that used to hold every non-transit ship now only ever holds
+ships actually in transit, which is the one case an orbit-spin
+animation never applied to in the first place (it tracks a course line
+between two points, not a fixed orbit).
+
+Verified two ways: `web_data_specs.rb` gained specs for all four
+marker cases (parked-and-excluded, engaged-and-nested, ring-anchored,
+transiting-to-a-ring) plus the `own_ship` non-filtering case, and a
+Playwright render against the real compiled stylesheet (not the specs'
+in-memory harness) confirmed, over a real running CSS animation: a
+parked-unengaged ship has no DOM node at all; an engaged ship's marker
+stays at a constant, non-drifting distance from its body's core across
+the animation; a ring-anchored ship's marker actually moves over time
+and stays at a constant radius from the star, i.e. traces its ring
+rather than drifting off it.
+
+**Two more gaps surfaced along the way, not introduced by this slice:**
+`Systems.system_ships` calls `SpaceShip.all` directly rather than going
+through the already-doubled `Ships` module, and there was no
+`SpaceShip` constant in the harness at all - every caller (`ships_at`,
+`settle_arrivals`, `WebData.system_ship_entries`) was silently hitting
+`system_ships`'s own `rescue => e; []` and getting an empty list back,
+every time, in every spec that ever ran. Same story for `Systems.
+sectors_at`/`engagement_at`: no `SpaceSector` double existed, so
+`engagement_at` could never actually return anything - "a ship at an
+engaged body" was untestable before this. Both fixed the same way as
+`SpaceBodyState`/`SpaceCombat` earlier: `Systems.system_ships` is now
+overridden in the harness to read `TestWorld.ships` directly, and a
+`SpaceSector` module double (`.all`/`.create`/`.reset!`) backs
+`TestSector`, which already existed but was only ever constructed
+directly, bypassing the lookup path production code actually uses.
+
+258 specs pass (36 new: 27 in `systems_specs.rb` - a from-scratch file,
+since `Systems.set_course`/`settle_arrival` had no direct coverage at
+all before this - plus 9 new cases in `web_data_specs.rb`).
+
 ## 14. Still to do
 
 - A "?" indicator somewhere a character's status is shown, for when

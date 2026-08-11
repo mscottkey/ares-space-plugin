@@ -126,6 +126,17 @@ module AresMUSH
     index :system_key
     attribute :location_key
 
+    # An alternative to location_key: a ship can hold position in a bare
+    # orbital ring instead of at a body - a capital ship staging between
+    # planets, or a station with no world of its own. Mutually exclusive
+    # with location_key, the same way carrier is mutually exclusive with
+    # having an independent position at all - see Systems.set_course/
+    # settle_arrival and space/station. system_angle has no config
+    # source of truth the way a body's angle does; it's just wherever
+    # the ship was put (see Systems.ring_angle_for).
+    attribute :system_ring, :type => DataType::Integer
+    attribute :system_angle, :type => DataType::Float
+
     # Set only while under way. Arrival is worked out lazily from these
     # rather than by any scheduled task - see Systems.settle_arrival.
     attribute :destination_key

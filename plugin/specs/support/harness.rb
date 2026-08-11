@@ -270,13 +270,43 @@ module AresMUSH
   end
 
   class TestSector
-    attr_accessor :id, :name, :geometry, :width, :height
+    attr_accessor :id, :name, :geometry, :width, :height, :system_key, :body_key
     def initialize(opts = {})
       self.id = opts[:id] || 1
       self.name = opts[:name] || "Test Sector"
       self.geometry = opts[:geometry] || "square"
       self.width = opts[:width] || 20
       self.height = opts[:height] || 20
+      self.system_key = opts[:system_key]
+      self.body_key = opts[:body_key]
+    end
+
+    def update(attrs)
+      attrs.each { |k, v| send("#{k}=", v) }
+      self
+    end
+  end
+
+  # No real Redis-backed SpaceSector.all/create existed in the harness
+  # before this - Systems.sectors_at/engagement_at had only ever been
+  # exercised through the rescue => nil in sectors_at, which quietly
+  # swallowed the missing constant, so "a ship at an engaged body shows
+  # a map marker" (web_data.rb) could never actually be tested. Same
+  # blind spot as SpaceBodyState/SpaceCombat elsewhere in this file.
+  module SpaceSector
+    class << self
+      attr_accessor :all
+
+      def create(opts = {})
+        sector = TestSector.new(opts)
+        self.all ||= []
+        self.all << sector
+        sector
+      end
+
+      def reset!
+        self.all = []
+      end
     end
   end
 
@@ -288,7 +318,7 @@ module AresMUSH
               :sweep_range, :status, :sector, :entry_room, :operational_rooms,
               :owner, :boarded_from, :system_key, :location_key, :dock_exit,
               :carrier, :hangar_room, :destination_key, :departed_at,
-              :travel_seconds ]
+              :travel_seconds, :system_ring, :system_angle ]
     attr_accessor(*ATTRS)
 
     def initialize(opts = {})
@@ -315,6 +345,8 @@ module AresMUSH
       self.dock_exit = opts[:dock_exit]
       self.carrier = opts[:carrier]
       self.hangar_room = opts[:hangar_room]
+      self.system_ring = opts[:system_ring]
+      self.system_angle = opts[:system_angle]
       class_data = Space::SpaceConfig.ship_class(self.ship_class) || {}
       self.sections = opts[:sections] || Space::Ships.build_sections(class_data)
       self.ammo = opts[:ammo] || Space::Ships.build_ammo(class_data)
@@ -331,6 +363,10 @@ module AresMUSH
 
     def in_transit?
       !self.destination_key.to_s.empty? && !self.departed_at.nil?
+    end
+
+    def eta_seconds
+      Space::Astro.seconds_remaining(self.departed_at, self.travel_seconds.to_i)
     end
   end
 
@@ -427,6 +463,20 @@ module AresMUSH
 
       def self.all_ships
         TestWorld.ships
+      end
+    end
+
+    # Systems.system_ships calls SpaceShip.all directly (not through
+    # Ships, which is fully doubled above) - there's no SpaceShip
+    # constant in this harness at all, so without this override every
+    # caller (ships_at, ships_at_ring, settle_arrivals, web_data's
+    # system_ship_entries) was silently hitting Systems' own
+    # rescue => nil and getting back an empty list, the same blind spot
+    # SpaceBodyState and SpaceCombat closed elsewhere in this file.
+    module Systems
+      def self.system_ships(system_key)
+        return [] if !system_key
+        TestWorld.ships.select { |s| s.system_key.to_s == "#{system_key}" && !s.destroyed? }
       end
     end
   end

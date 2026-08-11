@@ -158,6 +158,44 @@ module AresMUSH
         end
       end
 
+      # Ships holding position in a bare ring - no body, see system_ring
+      # on SpaceShip.
+      def self.ships_at_ring(system_key, ring)
+        system_ships(system_key).select do |s|
+          s.location_key.to_s.empty? && s.system_ring.to_i == ring.to_i && !s.in_transit?
+        end
+      end
+
+      # ---------------------------------------------------------------
+      # Ring-only positions (no body) - space/station and set_course
+      # both accept a bare ring number, encoded here as "ring:<n>" in
+      # destination_key so the existing travel/arrival plumbing (a
+      # single string field) doesn't need a second parallel set of
+      # fields just for this one case.
+      # ---------------------------------------------------------------
+
+      def self.parse_ring(value)
+        s = "#{value}".strip
+        return nil if s !~ /\A\d+\z/
+        s.to_i
+      end
+
+      def self.ring_key(ring)
+        "ring:#{ring.to_i}"
+      end
+
+      def self.ring_from_key(key)
+        m = /\Aring:(\d+)\z/.match("#{key}")
+        m ? m[1].to_i : nil
+      end
+
+      # No config gives a ring-parked ship's bearing the way a body's
+      # angle does, so this just spreads ships around the ring instead
+      # of stacking every one of them on the +x axis.
+      def self.ring_angle_for(ship)
+        (ship.id.to_i * 47) % 360
+      end
+
       # Resolves any completed journeys. Travel has no scheduler behind
       # it - a ship arrives the moment somebody looks and finds its
       # clock has run out.
@@ -169,43 +207,74 @@ module AresMUSH
         return false if !ship.in_transit?
         return false if !Astro.arrived?(ship.departed_at, ship.travel_seconds.to_i)
 
-        ship.update(
-          location_key: ship.destination_key,
-          destination_key: nil,
-          departed_at: nil,
-          travel_seconds: 0
-        )
+        ring = ring_from_key(ship.destination_key)
+        if ring
+          ship.update(
+            location_key: nil,
+            system_ring: ring,
+            system_angle: ring_angle_for(ship),
+            destination_key: nil,
+            departed_at: nil,
+            travel_seconds: 0
+          )
+        else
+          ship.update(
+            location_key: ship.destination_key,
+            system_ring: nil,
+            system_angle: nil,
+            destination_key: nil,
+            departed_at: nil,
+            travel_seconds: 0
+          )
+        end
         Docking.dock(ship)
         true
       end
 
-      # Sets a course. Returns { ok:, message:, error: }.
-      def self.set_course(ship, destination_key)
+      # A body's display name, or "Ring <n>" for a bare-ring key - the
+      # one thing body_name alone can't say, since a ring isn't a body.
+      def self.destination_name(system_key, key)
+        ring = ring_from_key(key)
+        return t('space.ring_n', ring: ring) if ring
+        body_name(system_key, key) || key
+      end
+
+      # Sets a course. destination is either a body (name or key) or a
+      # bare ring number - see parse_ring. Returns { ok:, message:, error: }.
+      def self.set_course(ship, destination)
         settle_arrival(ship)
 
         system_key = ship.system_key
         return failure(t('space.ship_not_in_system')) if system_key.to_s.empty?
 
-        destination = body(system_key, destination_key)
-        return failure(t('space.no_such_body', name: destination_key)) if !destination
+        ring = parse_ring(destination)
+        body_data = ring ? nil : body(system_key, destination)
+        return failure(t('space.no_such_body', name: destination)) if !ring && !body_data
 
         if ship.in_transit?
           return failure(t('space.already_under_way',
-            destination: body_name(system_key, ship.destination_key),
+            destination: destination_name(system_key, ship.destination_key),
             eta: Astro.format_duration(ship.eta_seconds)))
         end
 
-        dest_key = destination["key"]
-        if ship.location_key.to_s == dest_key.to_s
-          return failure(t('space.already_there', name: destination["name"] || dest_key))
+        if ring
+          dest_key = ring_key(ring)
+          dest_name = t('space.ring_n', ring: ring)
+          to_ring = ring
+          already_there = ship.location_key.to_s.empty? && ship.system_ring.to_i == ring
+        else
+          dest_key = body_data["key"]
+          dest_name = body_data["name"] || dest_key
+          to_ring = effective_ring(system_key, body_data)
+          already_there = ship.location_key.to_s == dest_key.to_s
         end
+        return failure(t('space.already_there', name: dest_name)) if already_there
 
         if travel_config["block_during_combat"] && Engagements.active_combat(ship.sector)
           return failure(t('space.cannot_travel_in_combat'))
         end
 
         from_ring = current_ring(ship)
-        to_ring = effective_ring(system_key, destination)
         seconds = Astro.travel_seconds(from_ring, to_ring, ship.max_speed, travel_config)
 
         ship.update(
@@ -217,11 +286,12 @@ module AresMUSH
 
         success(t('space.course_set',
           ship: ship.name,
-          destination: destination["name"] || dest_key,
+          destination: dest_name,
           eta: Astro.format_duration(seconds)))
       end
 
       def self.current_ring(ship)
+        return ship.system_ring.to_i if ship.system_ring
         data = body(ship.system_key, ship.location_key)
         data ? effective_ring(ship.system_key, data) : 1
       end

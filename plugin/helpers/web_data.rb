@@ -187,12 +187,12 @@ module AresMUSH
           orbit_period: Astro.orbit_period(layout),
           rings: ring_radii,
           bodies: bodies,
-          ships: system_ship_entries(system_key, by_key, center),
+          ships: system_ship_entries(system_key, by_key, center, layout),
           legend: Systems.body_classes.map do |name, cfg|
             { key: name, label: cfg["label"] || name,
               fill: cfg["fill"], stroke: cfg["stroke"] }
           end,
-          own_ship: viewer_ship ? ship_map_entry(viewer_ship, by_key, center) : nil
+          own_ship: viewer_ship ? ship_map_entry(viewer_ship, by_key, center, layout) : nil
         }
       end
 
@@ -228,6 +228,7 @@ module AresMUSH
         klass = Systems.body_class(body_data["classification"])
         faction = Systems.controlling_faction(system_key, body_data)
         engagement = Systems.engagement_at(system_key, key)
+        present = Systems.ships_at(system_key, key)
 
         {
           key: key,
@@ -248,22 +249,56 @@ module AresMUSH
           faction: faction,
           faction_color: Systems.faction_color(faction),
           is_belt: "#{body_data['type']}" == "belt",
-          ships: Systems.ships_at(system_key, key).map { |s| s.name },
+          ships: present.map { |s| s.name },
           engaged: !engagement.nil?,
           sector_id: engagement ? engagement[:sector].id : nil,
-          round: engagement ? engagement[:combat].round.to_i : nil
+          round: engagement ? engagement[:combat].round.to_i : nil,
+          # Only meaningful (and only sent with any entries) while
+          # engaged - see ship_map_entry's inclusion policy. A body
+          # with nothing going on already shows its ships through
+          # `ships`/the Present list/the Bodies table, so this stays
+          # empty rather than duplicating that for every peaceful body.
+          engaged_ships: engagement ? present.map { |s|
+            { id: s.id, name: s.name, faction: s.faction,
+              faction_color: Systems.faction_color(s.faction) }
+          } : []
         }
       end
 
-      def self.system_ship_entries(system_key, bodies_by_key, center)
+      # Only a ship doing something worth its own map marker gets one:
+      # under way (tracks its course line), holding in a bare ring (no
+      # body exists to represent it any other way - marked
+      # ring_anchored below), or present at a body that has an active
+      # engagement (marked engaged below). Nested under that body on
+      # the wire so the browser can ride it along on the body's own
+      # orbit animation, rather than drawing a second, independent dot -
+      # that was the actual bug report: a parked ship's marker never
+      # tracked the body's animated position, so it visibly drifted off
+      # the planet it was "at" as the map spun. A ship simply parked at
+      # a body with nothing going on is already visible through that
+      # body's own ships list/badge/table row, so it gets no marker at
+      # all here - drawing one would just be the same bug again.
+      #
+      # This filter is separate from ship_map_entry itself because
+      # own_ship (the toolbar's "holding at X" status line) needs a
+      # position/status for EVERY ship, including the common peaceful-
+      # parked case this filter excludes from the marker layer.
+      def self.system_ship_entries(system_key, bodies_by_key, center, layout)
         Systems.system_ships(system_key).map do |ship|
-          ship_map_entry(ship, bodies_by_key, center)
+          entry = ship_map_entry(ship, bodies_by_key, center, layout)
+          next nil if !entry
+          next entry if entry[:in_transit] || entry[:ring_anchored] || entry[:engaged]
+          nil
         end.compact
       end
 
-      # A ship sits on its body, or partway along the line to wherever
-      # it's going.
-      def self.ship_map_entry(ship, bodies_by_key, center)
+      # Returns a position/status entry for any ship that can be placed
+      # at all - under way, at a known body, or holding in a bare ring.
+      # Only nil for a genuinely broken reference (a location_key that
+      # matches no body, no system_ring, and not in transit), which
+      # shouldn't happen for a real ship but shouldn't crash the map
+      # if it somehow does.
+      def self.ship_map_entry(ship, bodies_by_key, center, layout)
         origin = bodies_by_key[ship.location_key.to_s]
         entry = {
           id: ship.id,
@@ -277,25 +312,48 @@ module AresMUSH
 
         if ship.in_transit?
           destination = bodies_by_key[ship.destination_key.to_s]
+          dest_ring = Systems.ring_from_key(ship.destination_key)
           from = origin ? [ origin[:x], origin[:y] ] : [ center, center ]
-          to = destination ? [ destination[:x], destination[:y] ] : [ center, center ]
+          to =
+            if destination
+              [ destination[:x], destination[:y] ]
+            elsif dest_ring
+              Astro.position(center, center, Astro.ring_radius(dest_ring, layout),
+                Systems.ring_angle_for(ship))
+            else
+              [ center, center ]
+            end
           fraction = Astro.progress(ship.departed_at, ship.travel_seconds.to_i)
           x, y = Astro.transit_position(from, to, fraction)
 
-          entry.merge(
+          return entry.merge(
             x: x, y: y,
             from_x: from[0], from_y: from[1],
             to_x: to[0], to_y: to[1],
             destination: ship.destination_key,
-            destination_name: destination ? destination[:name] : nil,
+            destination_name: Systems.destination_name(ship.system_key, ship.destination_key),
             progress: fraction.round(3),
             eta_seconds: ship.eta_seconds,
             eta: Astro.format_duration(ship.eta_seconds)
           )
-        else
-          return nil if !origin
-          entry.merge(x: origin[:x], y: origin[:y])
         end
+
+        if origin
+          return entry.merge(x: origin[:x], y: origin[:y], ring: origin[:ring],
+            engaged: !!origin[:engaged])
+        end
+
+        return nil if !ship.system_ring
+
+        ring = ship.system_ring.to_i
+        angle = ship.system_angle.to_f
+        radius = Astro.ring_radius(ring, layout)
+        x, y = Astro.position(center, center, radius, angle)
+        entry.merge(
+          x: x, y: y, ring: ring, angle: angle, orbit_radius: radius.round(2),
+          location_name: t('space.ring_n', ring: ring),
+          ring_anchored: true
+        )
       end
 
       # The tactical plot.

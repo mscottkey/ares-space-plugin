@@ -144,6 +144,36 @@ export default Component.extend({
         `transform-origin:${bodyX}px ${bodyY}px;` +
         `animation-duration:${period}s;` + paused;
 
+      // A ship at this body only arrives here (engaged_ships) when the
+      // body is actually engaged - see WebData.body_map_entry. It rides
+      // the body's own rotation the exact same way a moon does: a
+      // small fixed offset from the body's resting point, nested inside
+      // the same spin+start transform, with the same two-angle counter-
+      // rotation to keep its label level. shipsRadius is small on
+      // purpose - "hovering right next to the body," not another orbit.
+      const shipsRadius = this._visual(b, labelSize).shipsRadius;
+      const dockedShips = (b.engaged_ships || []).map((s, i) => {
+        const count = b.engaged_ships.length;
+        const shipAngle = count > 1 ? (360 / count) * i : 0;
+        const shipX = bodyX + shipsRadius * Math.cos(shipAngle * Math.PI / 180);
+        const shipY = bodyY + shipsRadius * Math.sin(shipAngle * Math.PI / 180);
+        const shipCounterStyle =
+          `transform-origin:${shipX}px ${shipY}px;` +
+          `animation-duration:${period}s;` + paused;
+
+        return {
+          id: s.id,
+          name: s.name,
+          faction: s.faction,
+          color: s.faction_color || '#666666',
+          shipX,
+          shipY,
+          localTransform: `rotate(${shipAngle} ${bodyX} ${bodyY})`,
+          counterStyle: shipCounterStyle,
+          counterTransform: `rotate(${-(angle + shipAngle)} ${shipX} ${shipY})`
+        };
+      });
+
       const moons = (moonsByParent[b.key] || []).map((m) => {
         const moonAngle = m.angle || 0;
         // m.orbit_radius is the moon's distance from its PARENT here,
@@ -192,29 +222,79 @@ export default Component.extend({
         counterStyle,
         // ...and this cancels the starting angle, for the same reason.
         counterTransform: `rotate(${-angle} ${bodyX} ${bodyY})`,
-        moons: moons.map((m) => Object.assign(m, { selected: `${m.key}` === `${selected}` }))
+        moons: moons.map((m) => Object.assign(m, { selected: `${m.key}` === `${selected}` })),
+        dockedShips
       });
     });
   }),
 
-  // Ships are drawn at fixed points rather than on the orbit animation:
-  // a ship under way should track its own course line, not spin.
+  // Only a ship under way gets drawn here - it tracks its own course
+  // line between two points, which isn't something either orbit-spin
+  // mechanism below applies to. A ship parked at an engaged body rides
+  // that body's own group instead (see `bodies`/`dockedShips` above);
+  // a ring-anchored ship gets its own group below (`ringShips`). Any
+  // ship simply parked with nothing going on isn't in system.ships at
+  // all - see WebData.system_ship_entries - so there's nothing to
+  // filter out here for that case.
   ships: computed('system.ships.[]', function () {
-    return (this.get('system.ships') || []).map((s) => ({
-      id: s.id,
-      name: s.name,
-      x: s.x,
-      y: s.y,
-      inTransit: s.in_transit,
-      fromX: s.from_x,
-      fromY: s.from_y,
-      toX: s.to_x,
-      toY: s.to_y,
-      destinationName: s.destination_name,
-      eta: s.eta,
-      color: s.faction_color || '#666666',
-      faction: s.faction
-    }));
+    return (this.get('system.ships') || [])
+      .filter((s) => s.in_transit)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        x: s.x,
+        y: s.y,
+        inTransit: true,
+        fromX: s.from_x,
+        fromY: s.from_y,
+        toX: s.to_x,
+        toY: s.to_y,
+        destinationName: s.destination_name,
+        eta: s.eta,
+        color: s.faction_color || '#666666',
+        faction: s.faction
+      }));
+  }),
+
+  // A ring-anchored ship has no body to ride along with, so it gets its
+  // own animated group, structured exactly like a lone body in `bodies`
+  // above (spin about the star, counter-rotate to keep the label
+  // level) but ship-styled rather than drawn as a body circle. Unlike
+  // an in-transit ship, it isn't going anywhere, so the flat `ships`
+  // layer (built for a moving course line) isn't the right home for it.
+  ringShips: computed('system.ships.[]', 'animate', 'basePeriod', 'labelSize', function () {
+    const center = this.get('system.center') || 0;
+    const base = this.basePeriod;
+    const labelSize = this.labelSize;
+    const paused = this.animate ? '' : 'animation-play-state:paused;';
+    const raw = (this.get('system.ships') || []).filter((s) => s.ring_anchored);
+
+    return raw.map((s) => {
+      const period = Math.round(base * Math.pow(s.ring || 1, 0.75));
+      const angle = s.angle || 0;
+      const bodyX = center + s.orbit_radius;
+      const bodyY = center;
+
+      const spinStyle =
+        `transform-origin:${center}px ${center}px;` +
+        `animation-duration:${period}s;` + paused;
+      const counterStyle =
+        `transform-origin:${bodyX}px ${bodyY}px;` +
+        `animation-duration:${period}s;` + paused;
+
+      return {
+        id: s.id,
+        name: s.name,
+        faction: s.faction,
+        color: s.faction_color || '#666666',
+        bodyX,
+        bodyY,
+        spinStyle,
+        startTransform: `rotate(${angle} ${center} ${center})`,
+        counterStyle,
+        counterTransform: `rotate(${-angle} ${bodyX} ${bodyY})`
+      };
+    });
   }),
 
   actions: {

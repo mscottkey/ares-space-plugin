@@ -161,27 +161,82 @@
                 </g>
               </g>
             {{/each}}
+
+            {{! Only present while the body is engaged - see
+                WebData.body_map_entry's engaged_ships. Rides the body's
+                own spin+start transform exactly like a moon does, just
+                at a small fixed offset instead of an orbit of its own -
+                see dockedShips in space-system-map.js. This is what
+                fixes the reported bug for ships at a fight: previously
+                every ship, engaged or not, lived in the flat
+                space-system-ships layer below with no animation at
+                all, so it visibly drifted off the body as the body's
+                own spin carried on without it. }}
+            {{#each body.dockedShips key="id" as |dship|}}
+              <g transform={{dship.localTransform}}>
+                <g class="space-orbit-counter" style={{dship.counterStyle}}>
+                  <g transform={{dship.counterTransform}}>
+                    <circle class="space-ship-marker" cx={{dship.shipX}} cy={{dship.shipY}}
+                            r={{this.shipMarkerRadius}}
+                            fill={{dship.color}} stroke="#ffffff" stroke-width="1.5" />
+                    <text class="space-ship-label" x={{dship.shipX}} y={{dship.shipY}}
+                          dy={{this.shipLabelDy}} text-anchor="middle"
+                          font-size={{this.labelSize}} fill="#3a3a45">{{dship.name}}</text>
+                    <title>{{dship.name}} [{{dship.faction}}]</title>
+                  </g>
+                </g>
+              </g>
+            {{/each}}
           </g>
         </g>
       {{/each}}
     </g>
 
+    {{! A ring-anchored ship (no body under it - a capital ship staging
+        between planets, or a station) gets the same four-group
+        spin/start/counter/unstart structure as a lone body above, just
+        ship-styled. It needs its own animated group for the same
+        reason a body does: without one it would sit at a fixed point
+        while the rest of the map visibly moves around it. }}
+    <g class="space-system-ring-ships">
+      {{#each this.ringShips key="id" as |rship|}}
+        <g class="space-orbit-spin" style={{rship.spinStyle}}>
+          <g transform={{rship.startTransform}}>
+            <g class="space-orbit-counter" style={{rship.counterStyle}}>
+              <g transform={{rship.counterTransform}}>
+                <circle class="space-ship-marker" cx={{rship.bodyX}} cy={{rship.bodyY}}
+                        r={{this.shipMarkerRadius}}
+                        fill={{rship.color}} stroke="#ffffff" stroke-width="1.5" />
+                <text class="space-ship-label" x={{rship.bodyX}} y={{rship.bodyY}}
+                      dy={{this.shipLabelDy}} text-anchor="middle"
+                      font-size={{this.labelSize}} fill="#3a3a45">{{rship.name}}</text>
+                <title>{{rship.name}} [{{rship.faction}}]</title>
+              </g>
+            </g>
+          </g>
+        </g>
+      {{/each}}
+    </g>
+
+    {{! Every ship here is under way - see the `ships` computed in
+        space-system-map.js, which filters to inTransit only. A ship
+        parked at a body (engaged or not) or holding in a ring is drawn
+        above instead, since either one needs to sit inside an animated
+        group rather than a flat, static layer. }}
     <g class="space-system-ships">
-      {{#each this.ships as |ship|}}
-        {{#if ship.inTransit}}
-          <line class="space-ship-course"
-                x1={{ship.fromX}} y1={{ship.fromY}}
-                x2={{ship.toX}} y2={{ship.toY}}
-                stroke="#5a8cc8" stroke-width="1" stroke-dasharray="4 4" />
-        {{/if}}
-        <g class="space-system-ship {{if ship.inTransit 'is-transit'}}">
+      {{#each this.ships key="id" as |ship|}}
+        <line class="space-ship-course"
+              x1={{ship.fromX}} y1={{ship.fromY}}
+              x2={{ship.toX}} y2={{ship.toY}}
+              stroke="#5a8cc8" stroke-width="1" stroke-dasharray="4 4" />
+        <g class="space-system-ship is-transit">
           <circle class="space-ship-marker" cx={{ship.x}} cy={{ship.y}}
                   r={{this.shipMarkerRadius}}
                   fill={{ship.color}} stroke="#ffffff" stroke-width="1.5" />
           <text class="space-ship-label" x={{ship.x}} y={{ship.y}}
                 dy={{this.shipLabelDy}} text-anchor="middle"
                 font-size={{this.labelSize}} fill="#3a3a45">{{ship.name}}</text>
-          <title>{{ship.name}} [{{ship.faction}}]{{#if ship.inTransit}} &rarr; {{ship.destinationName}}, ETA {{ship.eta}}{{/if}}</title>
+          <title>{{ship.name}} [{{ship.faction}}] &rarr; {{ship.destinationName}}, ETA {{ship.eta}}</title>
         </g>
       {{/each}}
     </g>

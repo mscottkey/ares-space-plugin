@@ -1,6 +1,12 @@
 module AresMUSH
   module Space
     # space/travel <body>
+    # space/travel <ring>
+    #
+    # A bare integer destination means a ring, not a body - Systems.
+    # set_course resolves which (see Systems.parse_ring). Lets a player
+    # course for open space, not just a planet - holding position
+    # between worlds, or heading somewhere no body has been built yet.
     class SpaceTravelCmd
       include CommandHandler
 

@@ -45,6 +45,8 @@ en:
     body_claimed: "%{name} is now held by %{faction}."
     sector_anchored: "Sector %{sector} is anchored at %{body}."
     ship_stationed: "%{name} is now at %{body} in %{system}."
+    ship_stationed_ring: "%{name} is now holding at ring %{ring} in %{system}."
+    ring_n: "ring %{ring}"
     deep_space: "deep space"
     own_location_line: "%{ship} is holding at %{location}."
     own_transit_line: "%{ship} is under way to %{destination}, ETA %{eta}."

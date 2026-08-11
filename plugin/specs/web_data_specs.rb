@@ -186,6 +186,104 @@ module AresMUSH
           expect(data[:x]).to be_a(Float)
           expect(data[:y]).to be_a(Float)
         end
+
+        # Ship markers: a ship simply parked at a body is already visible
+        # through that body's own ships list/table row, and its marker
+        # never tracked the body's own orbit animation - the actual bug
+        # report. So the map's ships[] only carries a ship that's doing
+        # something worth a dedicated, independently-animated marker.
+        def in_system(name, opts = {})
+          ship = TestShip.new(opts.merge(id: TestWorld.ships.count + 1,
+                                         name: name, ship_class: "Talon"))
+          ship.system_key = "covenant_reach"
+          TestWorld.ships << ship
+          ship
+        end
+
+        def start_engagement_at(body_key)
+          sector = SpaceSector.create(system_key: "covenant_reach", body_key: body_key)
+          SpaceCombat.create(sector: sector, state: "active")
+        end
+
+        it "does not give a peacefully parked ship its own marker" do
+          in_system("Talon One", location_key: "p1")
+
+          expect(map[:ships]).to eq []
+        end
+
+        it "still reports a peacefully parked ship on own_ship" do
+          ship = in_system("Talon One", location_key: "p1")
+
+          own_ship = WebData.ship_map_entry(ship, by_key, map[:center], Systems.orbit_layout)
+
+          expect(own_ship).not_to be_nil
+          expect(own_ship[:location_name]).to eq "P1"
+        end
+
+        it "marks a ship at an engaged body, riding that body's position" do
+          start_engagement_at("p1")
+          in_system("Talon One", location_key: "p1")
+
+          entry = map[:ships].first
+
+          expect(entry[:name]).to eq "Talon One"
+          expect(entry[:engaged]).to be true
+          expect(entry[:x]).to eq by_key["p1"][:x]
+          expect(entry[:y]).to eq by_key["p1"][:y]
+        end
+
+        it "lists an engaged body's present ships in engaged_ships too, for nested rendering" do
+          start_engagement_at("p1")
+          in_system("Talon One", location_key: "p1")
+
+          expect(by_key["p1"][:engaged_ships].map { |s| s[:name] }).to eq [ "Talon One" ]
+        end
+
+        it "leaves engaged_ships empty for a body with nothing going on" do
+          in_system("Talon One", location_key: "p1")
+
+          expect(by_key["p1"][:engaged_ships]).to eq []
+        end
+
+        it "always marks a ring-anchored ship - there is no body to represent it otherwise" do
+          in_system("Freedom", system_ring: 5, system_angle: 90.0)
+
+          entry = map[:ships].first
+
+          expect(entry[:name]).to eq "Freedom"
+          expect(entry[:ring_anchored]).to be true
+          expect(entry[:ring]).to eq 5
+        end
+
+        it "positions a ring-anchored ship along that ring at its stored angle" do
+          ship = in_system("Freedom", system_ring: 2, system_angle: 0.0)
+
+          entry = map[:ships].first
+          radius = Astro.ring_radius(2, Systems.orbit_layout)
+
+          expect(entry[:x]).to be_within(0.1).of(map[:center] + radius)
+          expect(entry[:y]).to be_within(0.1).of(map[:center])
+        end
+
+        it "marks a ship under way, even mid-transit between two bodies" do
+          ship = in_system("Talon One", location_key: "p1")
+          Systems.set_course(ship, "p2")
+
+          entry = map[:ships].find { |s| s[:name] == "Talon One" }
+
+          expect(entry).not_to be_nil
+          expect(entry[:in_transit]).to be true
+        end
+
+        it "gives a ship travelling to a bare ring a real destination name" do
+          ship = in_system("Talon One", location_key: "p1")
+          Systems.set_course(ship, "5")
+
+          entry = map[:ships].find { |s| s[:name] == "Talon One" }
+
+          expect(entry[:destination]).to eq "ring:5"
+          expect(entry[:destination_name]).not_to be_nil
+        end
       end
 
       describe :sector_summary do
