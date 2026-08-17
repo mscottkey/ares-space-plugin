@@ -116,7 +116,7 @@ engine strings like `dispatcher.not_allowed` come back as
 `Translation missing:` and you'll chase a bug that isn't there.
 
 `check_plugin_config` is worth reading — this plugin reports any crew
-station mapped to an FS3 ability the game doesn't define.
+station mapped to an ability the dice system doesn't define.
 
 ## 6. Driving commands headlessly
 

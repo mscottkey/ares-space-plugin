@@ -15,7 +15,7 @@ mess. Roleplay happens in normal grid rooms; the tactical situation is a
 persistent overlay you pull up with a command.
 
 All crew actions - flying, shooting, repairs, sensors - resolve through
-your normal FS3 skills.
+your normal skills, using whatever dice system this game runs.
 
 ## Reading the plot
 

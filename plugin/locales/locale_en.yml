@@ -31,7 +31,7 @@ en:
     combat_has_no_sector: "That engagement has no sector."
     no_active_combat: "No engagement is running in %{sector}."
     combat_already_running: "An engagement is already running in that sector."
-    no_fs3: "FS3 is unavailable"
+    no_dice_system: "The dice system is unavailable"
 
     # Systems, travel and astrography
     no_systems: "No star systems are configured. See space_systems.yml."

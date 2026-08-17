@@ -137,12 +137,12 @@ One number per class, roughly log-scale (3 fighter, 4 shuttle, 5 gunboat,
   hull-integrity threshold, not "all sections dead" — crippled ships stay
   in the fiction as objectives/wrecks.
 
-## 5. Stations and FS3 integration (exact call points)
+## 5. Stations and the dice seam (exact call points)
 
-`space.yml` maps stations to FS3 abilities, per-game configurable.
-(Illustrative names below; the ability names actually shipped as
-defaults are §12's Technician/Alertness/Composure, chosen because they
-exist in stock FS3 — "Engineering" and "Sensors" don't.)
+`space.yml` maps stations to ability names, per-game configurable. The
+names must be ones the configured dice system actually defines — the
+shipped defaults are §12's Technician/Alertness/Composure, chosen
+because they exist in stock FS3 ("Engineering" and "Sensors" don't).
 
 ```yaml
 space:
@@ -154,20 +154,22 @@ space:
     sensors:     Sensors
 ```
 
-Every human action is one FS3 roll, made at resolution time:
+Every human action is one roll, made at resolution time:
 
 | Action | Roll | Opposed by / vs |
 |---|---|---|
-| Hard maneuver, evasive flying | `FS3Skills.one_shot_roll(pilot, Piloting + agility mod + terrain mod)` | fixed difficulty; successes bank as evade margin for the round |
-| Firing a weapon | `FS3Skills.one_shot_roll(gunner, Gunnery + silhouette mod + range mod + arc/terrain mods)` | target's banked evade margin |
-| Damage control | `FS3Skills.one_shot_roll(engineer, Engineering)` | fixed difficulty per system severity |
-| Power routing / boost | Engineering roll; margin buys temporary shield/speed points | fixed |
-| Sensor sweep (contacts, ID, target lock) | Sensors roll | fixed + terrain penalty |
+| Hard maneuver, evasive flying | pilot's skill + agility mod + terrain mod | fixed difficulty; successes bank as evade margin for the round |
+| Firing a weapon | gunner's skill + silhouette mod + range mod + arc/terrain mods | target's banked evade margin |
+| Damage control | engineer's skill | fixed difficulty per system severity |
+| Power routing / boost | engineering roll; margin buys temporary shield/speed points | fixed |
+| Sensor sweep (contacts, ID, target lock) | sensors roll | fixed + terrain penalty |
 
-NPC-crewed stations use the stored NPC rating with
-`FS3Skills.one_shot_die_roll(dice)` — the same split fs3combat uses for its
-NPCs. Success/margin comparison helpers are ours; the *dice* are always FS3.
-We never touch fs3combat's combat loop — only fs3skills' public API.
+NPC-crewed stations roll the stored NPC rating as a flat pool instead of
+a character's skill — the same split fs3combat uses for its own NPCs.
+
+The success/margin comparison helpers are ours; the dice belong to
+whichever system `dice_system` names, and FS3 is the shipped default.
+See §14 for that seam. We never touch fs3combat's combat loop.
 
 ## 6. Round resolution (POC — turn-based, request-response)
 
@@ -276,11 +278,13 @@ All five resolved; the POC is built on these.
    `Engagements.ready_to_resolve?`), and a scheduled tick would call the
    same function — so moving off GM-only is a small change, not a rewrite.
 
-4. **Stations map to FS3 abilities in YAML.** `station_skills` maps each
-   station to an ability. Anything FS3 doesn't define falls back to a
-   configurable flat pool (`untrained_dice`, default 2) rather than
-   letting FS3 quietly treat an unknown ability as a 1-die background
-   roll. `check_config` reports such mismatches at startup.
+4. **Stations map to abilities in YAML.** `station_skills` maps each
+   station to an ability. Anything the dice system doesn't define falls
+   back to a configurable flat pool (`untrained_dice`, default 2) rather
+   than letting the system quietly treat an unknown ability as a token
+   roll (FS3 gives it 1 background die). `check_config` reports such
+   mismatches at startup. Which system does the rolling is itself
+   configurable — see §14.
 
 5. **Fighter shields: a single pool.** Small craft carry one section
    named `hull` — one bubble over the whole ship. Capitals carry one
@@ -289,7 +293,8 @@ All five resolved; the POC is built on these.
 
 ## 11. What the POC actually implements
 
-Built and covered by 121 passing specs (`rspec` at the repo root):
+Built and covered by passing specs (`rspec` at the repo root; the count
+is noted per slice below, currently 304):
 
 - Sectors, ships, terrain and engagements as Ohm models.
 - Square and hex geometry, facing, turn cost limited by agility, arcs.
@@ -802,11 +807,124 @@ directly, bypassing the lookup path production code actually uses.
 since `Systems.set_course`/`settle_arrival` had no direct coverage at
 all before this - plus 9 new cases in `web_data_specs.rb`).
 
-## 14. Still to do
+## 14. Pluggable dice
+
+Nothing about ships, arcs, sections, silhouette or the round structure is
+FS3-specific — only the dice are. `plugin/dice/` is the seam that lets a
+game on another system use everything else. FS3 remains the default and
+needs no configuration; a game that sets nothing behaves exactly as it
+always has.
+
+Worth stating plainly: **Ares core has no system-agnostic dice interface
+to conform to.** There is no registry, no dispatcher, no roll API — the
+only cross-system convention in core is `<System>.app_review(char)`,
+dispatched by a hardcoded if-chain in chargen. So this is a convention we
+are defining, not one we are implementing. If Ares ever grows a standard,
+this wants revisiting.
+
+### The contract
+
+An adapter is a stateless module with four methods:
+
+```ruby
+available?                             # is the system loaded and enabled?
+known_ability?(ability)                # would this ability really resolve?
+roll_ability(char, ability, modifier)  # => { successes:, ... }
+roll_pool(rating, modifier)            # => { successes:, ... }
+```
+
+Both roll methods return a hash carrying an **Integer `:successes`**.
+That scalar is the whole contract with the combat math. Extras are
+welcome and pass through untouched — the resolver ignores them.
+
+Reserved keys an adapter must not return, because something downstream
+owns them: `:roller` and `:ability` (`Crew` stamps these *after* the
+roll, so an adapter cannot overwrite a display name already resolved),
+and `:range`, `:station`, `:modifier` (merged over the roll hash by
+`Sensors.sweep`).
+
+`known_ability?` exists because of a real FS3 footgun worth repeating for
+anyone writing an adapter: FS3's `get_ability_type` answers `:background`
+for a name it has never heard of rather than failing, so a typo'd skill
+silently becomes a one-die everyman roll instead of an error. Any system
+needs an equivalent "is this real?" answer or a misconfigured station
+degrades invisibly.
+
+`roll_pool` takes the raw rating and the modifier **separately** rather
+than a finished die count. Combining them — and deciding there is a floor
+of one die — is an FS3 rule, so it lives in the FS3 adapter rather than
+being imposed on every system on the way in.
+
+### Selection
+
+`space.yml`'s `dice_system` names it. A bare name is one shipped here
+(`fs3` → `Space::Dice::Fs3Adapter`, case-insensitive, underscores
+camel-cased); a name containing `::` is a fully-qualified constant, so a
+third-party system can ship its adapter inside its **own** plugin rather
+than reopening this namespace.
+
+Lookup happens per call, not via load-time registration: core's
+`PluginManager#code_files` globs directories in no guaranteed order (and
+`dice` sorts before `helpers`), so anything self-registering into a table
+at load time would race whatever populates that table.
+
+### Failure is degraded, not fatal
+
+`Dice.invoke` funnels both roll paths so a missing, half-written,
+unavailable or exploding dice system yields zero successes instead of
+raising. That matters more than it looks: **the resolver spends ammo
+before it rolls**, so an exception escaping a roll would abandon the
+round half-applied — ammo gone, movement committed, no report emitted. A
+zero is a bad roll; a raise is a corrupt round. `check_config` reports
+all four failure modes by name at startup.
+
+### What this does and doesn't buy an FFG game
+
+The user's motivating example was Star Wars on FFG/Genesys narrative
+dice. Under this contract an FFG adapter **can** map a character and
+ability to that game's pool, decide what `modifier: +2` means (two boost
+dice, say), collapse the symbol results to a net-successes integer, and
+return `advantage:`/`threat:`/`triumph:`/`despair:` as extras.
+
+It **cannot**, without further work:
+
+- **Give those symbols any mechanical consequence.** The resolver
+  consumes exactly one number. Advantage cannot recover a shield point;
+  despair cannot wreck a hardpoint. Those are new plugin mechanics, not
+  adapter concerns.
+- **Get them in front of a player.** Extras survive into
+  `roll_station`'s return, but the resolver copies only named keys into
+  report entries and `display.rb` renders only those. Today `advantage:
+  2` is carried and then dropped. (`success_title` is the one extra that
+  reaches a report entry — and even that is currently unrendered.)
+- **Escape FS3's calibration.** `hit_threshold`, `untrained_dice`,
+  `range_mods`, `silhouette_tohit_clamp`, `Rules.damage_bonus(net) ==
+  net - 1`, one success = one hull point repaired, and one success = one
+  grid cell of extra sweep range are all sized to FS3's success curve. An
+  adapter returning a 0-or-1 binary makes `damage_bonus` dead and repairs
+  uselessly slow; one returning a d20-style margin makes damage explode.
+
+That last one is the largest limitation and the least obvious: **the code
+seam is narrow, but the numeric calibration is not.** Writing an adapter
+is a small job; tuning `space.yml` so a non-FS3 game plays well is the
+real one. This contract makes another system *usable*, not *native* — a
+deliberate trade to keep a working, well-tested resolver stable.
+
+304 specs pass (46 new: `dice_specs.rb` for the seam itself, and
+`crew_dice_specs.rb` for what `Crew` hands down plus a full round —
+attacks, evasion, repair, sweeps — resolved end-to-end by a fake system
+that is deliberately not FS3. That last one is the actual proof the
+combat math runs off the scalar and nothing else). The harness gained a
+`TestConfig.override` hook, since the suite uses no rspec-mocks anywhere
+and had no way to exercise a non-default setting.
+
+## 15. Still to do
 
 - A "?" indicator somewhere a character's status is shown, for when
   `Character.current_ship` and `Boarding.aboard?` disagree (see §13) -
   flagged as a real gap when the stamp was designed, not yet built
   because nothing displays a character's location today for it to
   attach to.
+- A place for dice-system extras to land in the round report (see §14) -
+  today an adapter can return them but nothing renders them.
 - Pseudo-real-time tick (§9), after the POC has been played.

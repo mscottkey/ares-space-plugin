@@ -35,9 +35,27 @@ space:
   # Net successes (attack successes minus target's evade margin) needed to hit.
   hit_threshold: 1
 
-  # Dice rolled when a station's skill is unset, unknown to FS3, or the
-  # station is crewed by an unskilled hand.
+  # Dice rolled when a station's skill is unset, unknown to the dice
+  # system, or the station is crewed by an unskilled hand.
   untrained_dice: 2
+
+  # ---------------------------------------------------------------------
+  # Dice system
+  # ---------------------------------------------------------------------
+  # Which system crew rolls go out to. `fs3` is core FS3 and the default -
+  # leave this alone unless your game runs something else.
+  #
+  # Everything else in this plugin (ships, arcs, sections, silhouette, the
+  # round structure) is system-agnostic; only the dice are not. A game on
+  # another system supplies an adapter - four small methods - and names it
+  # here. A bare name is one shipped with this plugin; a name containing
+  # "::" is a fully-qualified constant, so an adapter can live inside your
+  # own plugin. See docs/architecture.md for the contract.
+  #
+  # Run `manage/checkconfig` after changing this: it reports an unknown
+  # name, a half-implemented adapter, and any station skill the system
+  # doesn't actually define.
+  dice_system: fs3
 
   # ---------------------------------------------------------------------
   # Silhouette (size class)
@@ -67,13 +85,14 @@ space:
     # Beyond a weapon's range it simply cannot fire.
 
   # ---------------------------------------------------------------------
-  # Stations -> FS3 abilities
+  # Stations -> abilities
   # ---------------------------------------------------------------------
   # These default to skills that ship with stock FS3, so the plugin works
   # out of the box. Change them to whatever this game's skill list
-  # actually contains. An ability FS3 doesn't know falls back to
-  # untrained_dice - run `manage/checkconfig` and this plugin will name
-  # any station that would.
+  # actually contains - if you changed dice_system above, these must be
+  # names THAT system defines. An ability the system doesn't know falls
+  # back to untrained_dice - run `manage/checkconfig` and this plugin will
+  # name any station that would.
   station_skills:
     pilot: Piloting
     helm: Piloting

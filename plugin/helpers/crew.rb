@@ -1,11 +1,12 @@
 module AresMUSH
   module Space
 
-    # The seam between space and the human layer.
+    # The seam between space and the human layer: who is sitting at which
+    # station, under what name, and which ability their seat maps to.
     #
-    # Every skill roll in this plugin goes through here and out to core
-    # FS3. We never roll our own dice, never invent a skill system, and
-    # never touch fs3combat's turn loop - only fs3skills' public API.
+    # WHICH dice then get rolled is Space::Dice's business, not this
+    # module's - see plugin/dice/. We never roll our own dice and never
+    # invent a skill system.
     module Crew
 
       CHAR_PREFIX = "char:"
@@ -89,63 +90,45 @@ module AresMUSH
         { ok: false, message: nil, error: error }
       end
 
-      # Does FS3 actually know this ability, or would it quietly treat it
-      # as an unknown background and hand back a single die?
+      # Does the configured dice system actually know this ability, or
+      # would it quietly treat it as an unknown and hand back a token
+      # roll?
       def self.known_ability?(ability)
-        return false if ability.nil?
-        return false if !fs3_available?
-        type = FS3Skills.get_ability_type("#{ability}")
-        [ :action, :attribute, :language, :advantage ].include?(type)
-      rescue => e
-        Global.logger.debug "Space: could not classify ability #{ability}: #{e}"
-        false
-      end
-
-      def self.fs3_available?
-        defined?(FS3Skills) && FS3Skills.respond_to?(:one_shot_roll)
+        Dice.known_ability?(ability)
       end
 
       # Rolls a station's action.
       #
-      # Returns { successes:, success_title:, roller:, ability:, dice: }.
-      # Successes are FS3's: a positive count, 0 for failure, -1 for a
-      # botch. A botched evasion leaving you easier to hit is intended.
+      # Returns { successes:, success_title:, roller:, ability:, ... } -
+      # `successes` is the scalar the combat math runs on (positive count,
+      # 0 for failure, negative for whatever the system calls worse than
+      # failure; FS3 botches at -1). A botched evasion leaving you easier
+      # to hit is intended. Anything else the dice system returned rides
+      # along untouched.
+      #
+      # roller and ability are stamped AFTER the roll, so an adapter
+      # cannot overwrite the display name this module already resolved.
       def self.roll_station(ship, station, modifier = 0)
         crew = ship.crew_at(station)
         ability = SpaceConfig.skill_for_station(station)
         roller = crew_name(crew)
-
-        if !fs3_available?
-          Global.logger.error "Space: FS3Skills is unavailable; cannot roll #{station}."
-          return { successes: 0, success_title: t('space.no_fs3'), roller: roller,
-                   ability: ability, dice: 0 }
-        end
-
         char = crew_char(crew)
 
-        if char && known_ability?(ability)
-          result = FS3Skills.one_shot_roll(char, FS3Skills::RollParams.new(ability, modifier.to_i))
-          return result.merge(roller: char.name, ability: ability, dice: nil)
-        end
+        result =
+          if char && known_ability?(ability)
+            Dice.roll_ability(char, ability, modifier)
+          else
+            # An NPC hand, an unmanned station, or a skill this game's
+            # dice system doesn't define: roll a flat pool rather than
+            # let the system silently treat an unknown ability as a
+            # token everyman roll.
+            if char
+              Global.logger.warn "Space: station #{station} maps to '#{ability}', which the dice system does not define. Rolling untrained."
+            end
+            Dice.roll_pool(npc_rating(crew) || SpaceConfig.untrained_dice, modifier)
+          end
 
-        # An NPC hand, an unmanned station, or a skill this game's FS3
-        # config doesn't define: roll a flat pool rather than let FS3
-        # silently treat an unknown ability as a single everyman die.
-        base = npc_rating(crew) || SpaceConfig.untrained_dice
-        dice = [ base.to_i + modifier.to_i, 1 ].max
-        result = FS3Skills.one_shot_die_roll(dice)
-
-        if char && !known_ability?(ability)
-          Global.logger.warn "Space: station #{station} maps to '#{ability}', which FS3 does not define. Rolling #{dice} untrained dice."
-        end
-
-        result.merge(roller: roller, ability: ability, dice: dice)
-      end
-
-      # Rolls a flat pool with no station behind it (terrain hazards etc).
-      def self.roll_dice(dice)
-        return { successes: 0, success_title: t('space.no_fs3') } if !fs3_available?
-        FS3Skills.one_shot_die_roll([ dice.to_i, 1 ].max)
+        result.merge(roller: roller, ability: ability)
       end
 
       def self.station_summary(ship)

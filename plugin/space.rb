@@ -144,20 +144,12 @@ module AresMUSH
       Global.logger.info "Space plugin loaded."
     end
 
-    # Surfaced by `manage/checkconfig`. Catches the two mistakes that
-    # would otherwise show up as silent one-die rolls mid-battle.
+    # Surfaced by `manage/checkconfig`. Catches the mistakes that would
+    # otherwise show up as silent token rolls mid-battle.
     def self.check_config
       errors = []
 
-      if !Space::Crew.fs3_available?
-        errors << "space: FS3Skills is unavailable. This plugin rolls all crew actions through core FS3."
-      else
-        (Space::SpaceConfig.station_skills || {}).each do |station, ability|
-          if !Space::Crew.known_ability?(ability)
-            errors << "space: station '#{station}' maps to ability '#{ability}', which FS3 does not define. It will roll untrained dice."
-          end
-        end
-      end
+      errors.concat(Space::Dice.check_config)
 
       (Space::SpaceConfig.ship_classes || {}).each do |name, data|
         sections = data["sections"] || {}

@@ -16,5 +16,7 @@ RSpec.configure do |config|
     AresMUSH::SpaceBodyState.reset!
     AresMUSH::SpaceCombat.reset!
     AresMUSH::SpaceSector.reset!
+    AresMUSH::TestConfig.reset_overrides!
+    AresMUSH::Space::Dice::FakeAdapter.reset!
   end
 end

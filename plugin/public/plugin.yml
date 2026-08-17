@@ -5,4 +5,5 @@ description: >
   Space and space-combat system for AresMUSH. Persistent tactical sectors
   queried as a sensor console, ships with size classes, facing, firing arcs
   and sections, and turn-based combat that resolves every crew action
-  through core FS3 skill rolls.
+  through your game's dice system - core FS3 by default, or a pluggable
+  adapter for another system.

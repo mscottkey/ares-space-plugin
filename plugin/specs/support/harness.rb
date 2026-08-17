@@ -27,10 +27,26 @@ module AresMUSH
       @config ||= load!
     end
 
+    # Per-example config overrides. The suite deliberately uses no
+    # rspec-mocks anywhere, so exercising a non-default setting needs a
+    # seam of its own rather than a stub. Cleared in before(:each).
+    def self.override(path, value)
+      @overrides ||= {}
+      @overrides[Array(path).map(&:to_s)] = value
+    end
+
+    def self.reset_overrides!
+      @overrides = {}
+    end
+
     def self.read(*path)
-      path.flatten.reduce(config) do |node, key|
+      key = path.flatten.map(&:to_s)
+      overrides = @overrides || {}
+      return overrides[key] if overrides.key?(key)
+
+      key.reduce(config) do |node, k|
         break nil if !node.is_a?(Hash)
-        node[key.to_s]
+        node[k]
       end
     end
   end

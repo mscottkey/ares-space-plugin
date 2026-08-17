@@ -33,6 +33,12 @@ module AresMUSH
         (setting("untrained_dice") || 2).to_i
       end
 
+      # Which dice system crew rolls go out to. Defaults to FS3, so a
+      # game that never sets this behaves exactly as it always has.
+      def self.dice_system
+        setting("dice_system") || Dice::DEFAULT
+      end
+
       def self.silhouette_clamp
         (setting("silhouette_tohit_clamp") || 3).to_i
       end

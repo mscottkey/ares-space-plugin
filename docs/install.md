@@ -69,7 +69,7 @@ compiled at all — see "Styles" under "Web portal" below.
 
 ## 3. Match the station skills to your game
 
-`space.yml` maps each crew station to an FS3 ability:
+`space.yml` maps each crew station to an ability:
 
 ```yaml
 station_skills:
@@ -84,12 +84,30 @@ station_skills:
 The shipped defaults are stock FS3 ability names (`Piloting`, `Gunnery`,
 `Technician`, `Alertness`, `Composure`), so a fresh game works with no
 changes. If your game has renamed or replaced any of these, update the
-mapping to match. Anything that doesn't resolve to a real FS3 ability
-rolls a flat untrained pool instead — which works, but means nobody's
-skill matters at that station. After loading the plugin, run
-`config/check`: it reports every station mapped to an ability FS3
-doesn't know, along with unknown weapons and bad firing arcs in your
-ship classes.
+mapping to match. Anything that doesn't resolve to a real ability rolls a
+flat untrained pool instead — which works, but means nobody's skill
+matters at that station. After loading the plugin, run `config/check`: it
+reports every station mapped to an ability the dice system doesn't know,
+along with unknown weapons and bad firing arcs in your ship classes.
+
+### Using a dice system other than FS3
+
+`space.yml`'s `dice_system` decides which system resolves crew actions.
+It defaults to `fs3` — core FS3 — and a game that leaves it alone behaves
+exactly as this plugin always has.
+
+Everything else in the plugin (ships, arcs, sections, silhouette, the
+round structure) is system-agnostic; only the dice are not. A game on
+another system supplies an adapter — four small methods — and names it
+here. `config/check` reports an unknown name (and lists what *is*
+installed), an adapter missing part of the contract, and one that isn't
+available.
+
+The contract, and an honest account of what a non-FS3 system does and
+doesn't get, is in [docs/architecture.md](architecture.md) §14. The short
+version: writing an adapter is a small job, but the tuning values in
+`space.yml` are sized to FS3's success curve, so a different system will
+want them retuned.
 
 ## 4. Load it
 

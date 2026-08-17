@@ -3,9 +3,13 @@ module AresMUSH
 
     # The combat math, as pure functions over plain values.
     #
-    # Nothing here touches Ohm, Redis, FS3 or config directly - callers
-    # pass in the numbers and the rules hash. That keeps the tuning
-    # surface in YAML, the dice in FS3, and this file unit-testable.
+    # Nothing here touches Ohm, Redis, the dice or config directly -
+    # callers pass in the numbers and the rules hash. That keeps the
+    # tuning surface in YAML, the dice behind Space::Dice, and this file
+    # unit-testable.
+    #
+    # The successes these functions compare are a plain integer scalar,
+    # which is the whole contract with whatever dice system rolled them.
     module Rules
 
       # -----------------------------------------------------------------
@@ -65,7 +69,9 @@ module AresMUSH
       # Attack resolution
       # -----------------------------------------------------------------
 
-      # Total dice modifier for a gunnery roll, before FS3 sees it.
+      # Total modifier for a gunnery roll, before the dice system sees
+      # it. Signed integer; each system decides what it means (FS3 reads
+      # it as bonus/penalty dice).
       def self.attack_modifier(opts)
         silhouette_mod(opts[:attacker_sil], opts[:target_sil], opts[:silhouette_clamp] || 3) +
           scale_tohit_mod(opts[:weapon_scale], opts[:target_sil], opts[:scale_rules] || {}) +

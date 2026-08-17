@@ -28,22 +28,24 @@ A single Ares plugin providing:
   portal's websocket when a round resolves. Plain Ember, no bundle step.
   Orders from the browser run through the same validation as the
   in-game commands.
-- **FS3 integration** — every human action (piloting, gunnery,
-  engineering, damage control) resolves through core FS3 skill rolls via
-  the public `FS3Skills` API. This plugin extends FS3 into space; it does
-  not replace it.
+- **Pluggable dice** — every human action (piloting, gunnery,
+  engineering, damage control) resolves through one adapter. Core FS3
+  ships as the zero-config default via the public `FS3Skills` API; a game
+  on another system writes one small file in `plugin/dice/` and names it
+  in config. This plugin extends your dice system into space; it does not
+  replace it.
 
 
 `plugin/install` loads it automatically. Then `config/check` to catch
-station skills your game's FS3 doesn't define. Full steps, the manual
-(SFTP) install path, and a smoke test are in
+station skills your game's dice system doesn't define. Full steps, the
+manual (SFTP) install path, and a smoke test are in
 [docs/install.md](docs/install.md); to spin up a throwaway Ares instance
 to test against, see [docs/dev-server.md](docs/dev-server.md).
 
 To see it work without a server:
 
 ```
-rspec              # 125 specs, no Redis or game required
+rspec              # 304 specs, no Redis or game required
 ruby tools/demo.rb # prints a scripted engagement's console and report
 ```
 
@@ -58,15 +60,18 @@ plugin/
     rules.rb          silhouette, scale, range, damage - pure functions
     ship_behavior.rb  derived ship state, shared by model and specs
     resolver.rb       the round: sweeps, evasion, movement, fire, repairs
-    crew.rb           the FS3 seam - every skill roll goes through here
+    crew.rb           who is at which station, and under what name
     sensors.rb        per-ship contact detection
     orders.rb         order storage and validation
     display.rb        ASCII tactical console and round report
     web_data.rb       JSON payloads for the portal, sensor-filtered
+  dice/               the dice seam - one adapter per system
+    dice.rb           adapter selection and the roll contract
+    fs3_adapter.rb    core FS3 (the default)
   commands/           22 player and GM commands
   templates/          ERB for the console and ship status
   web/                request handlers (tactical, sectors, ship, order, resolve)
-  specs/              125 specs + in-memory harness
+  specs/              304 specs + in-memory harness
 game/                 copied into your game/ by plugin/install
   config/             space.yml, space_ships.yml, space_weapons.yml,
                       space_systems.yml
