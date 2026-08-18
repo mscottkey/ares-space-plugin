@@ -20,7 +20,25 @@ module AresMUSH
     # Rules.hit?/net_successes/damage_bonus, and note the resolver also
     # spends it as a magnitude (a repair success is a hull point, a sweep
     # success is a grid cell of extra range). Extra system-specific keys
-    # are welcome and simply ignored by the resolver.
+    # are welcome and simply ignored by the resolver, with two
+    # exceptions: two OPTIONAL keys the resolver reads and every other
+    # system-agnostic caller ignores.
+    #
+    #   :strain  Integer - strain inflicted on the ACTING ship (the one
+    #            that rolled), added to whatever Resolver.apply_roll_strain
+    #            already applies for a botched roll (successes < 0,
+    #            config strain.on_botch). This is the FFG hook: an
+    #            adapter spends net threat here.
+    #   :detail  String  - a short narrative note, rendered alongside the
+    #            roll's line in the round report (Display.render_report).
+    #            This is where advantage/triumph/despair get described,
+    #            since the resolver only ever consumes the :successes
+    #            integer for the math itself.
+    #
+    # Both are additive to the base contract - :successes remains the
+    # only required key, and Rules stays untouched by either. The FS3
+    # adapter returns neither, so a game that never sets dice_system sees
+    # no change in behaviour.
     #
     # Reserved keys an adapter should not return, because something
     # downstream already owns them: :roller and :ability (Crew stamps

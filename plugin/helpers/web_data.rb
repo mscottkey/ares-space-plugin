@@ -50,6 +50,9 @@ module AresMUSH
           max_shields: ship.sections.values.sum { |s| (s["max_shields"] || 0).to_i },
           hull: ship.total_hull[:current],
           max_hull: ship.total_hull[:max],
+          strain: ship.strain.to_i,
+          strain_threshold: ship.strain_threshold,
+          strained_out: ship.strained_out?,
           hardpoints: Ships.hardpoint_summary(ship),
           stations: Crew.station_summary(ship).map do |s|
             {
@@ -124,7 +127,10 @@ module AresMUSH
           shields: ship.sections.values.sum { |s| s["shields"].to_i },
           max_shields: ship.sections.values.sum { |s| (s["max_shields"] || 0).to_i },
           hull: ship.total_hull[:current],
-          max_hull: ship.total_hull[:max]
+          max_hull: ship.total_hull[:max],
+          strain: ship.strain.to_i,
+          strain_threshold: ship.strain_threshold,
+          strained_out: ship.strained_out?
         )
       end
 

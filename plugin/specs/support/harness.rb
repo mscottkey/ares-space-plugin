@@ -330,7 +330,7 @@ module AresMUSH
     include Space::ShipBehavior
 
     ATTRS = [ :id, :name, :ship_class, :faction, :x, :y, :facing, :speed,
-              :sections, :stations, :orders, :ammo, :evade_margin,
+              :sections, :stations, :orders, :ammo, :evade_margin, :strain,
               :sweep_range, :status, :sector, :entry_room, :operational_rooms,
               :owner, :boarded_from, :system_key, :location_key, :dock_exit,
               :carrier, :hangar_room, :destination_key, :departed_at,
@@ -349,6 +349,7 @@ module AresMUSH
       self.sector = opts[:sector]
       self.status = opts[:status] || "active"
       self.evade_margin = 0
+      self.strain = opts[:strain] || 0
       self.sweep_range = 0
       self.stations = opts[:stations] || {}
       self.orders = {}

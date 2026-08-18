@@ -114,6 +114,10 @@ module AresMUSH
     # Successes the pilot banked this round; spent defending against
     # every attack until the round resolves.
     attribute :evade_margin, :type => DataType::Integer, :default => 0
+    # A whole-ship "stressed, not broken" pool, separate from the
+    # per-section shields/hull above - see ShipBehavior#strain_threshold
+    # and Rules.apply_strain/recover_strain/strained_out?.
+    attribute :strain, :type => DataType::Integer, :default => 0
     # Extra sensor reach bought by a successful sweep, cleared each round.
     attribute :sweep_range, :type => DataType::Integer, :default => 0
 

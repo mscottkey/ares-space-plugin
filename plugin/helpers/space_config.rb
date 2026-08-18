@@ -76,6 +76,21 @@ module AresMUSH
       end
 
       # ---------------------------------------------------------------
+      # Strain
+      # ---------------------------------------------------------------
+
+      def self.strain_regen
+        (setting("strain", "regen") || 0).to_i
+      end
+
+      # FS3 botches at -1; "the manoeuvre went badly and you stressed the
+      # frame" is what gives strain a role for a game that never wires up
+      # the roll side-effects channel (see Resolver.apply_roll_strain).
+      def self.strain_on_botch
+        (setting("strain", "on_botch") || 1).to_i
+      end
+
+      # ---------------------------------------------------------------
       # Ship classes and weapons
       # ---------------------------------------------------------------
 

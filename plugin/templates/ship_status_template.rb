@@ -44,6 +44,10 @@ module AresMUSH
         return t('space.all_systems_nominal') if offline.empty?
         t('space.systems_offline_line', systems: offline.join(', '))
       end
+
+      def strain_line
+        Display.strain_bar(ship)
+      end
     end
   end
 end

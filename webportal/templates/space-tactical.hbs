@@ -58,6 +58,13 @@
         </tbody>
       </table>
 
+      <p class="space-strain">
+        Strain {{this.model.own_ship.strain}}/{{this.model.own_ship.strain_threshold}}
+        {{#if this.model.own_ship.strained_out}}
+          <span class="space-adrift">ADRIFT</span>
+        {{/if}}
+      </p>
+
       <h4>Orders</h4>
 
       <div class="space-order-block">
@@ -101,6 +108,7 @@
                   {{action (mut this.repairSection) s.name}}>{{s.name}}</button>
         {{/each}}
         <button class="btn btn-sm btn-secondary" {{action "orderRepair"}}>Repair</button>
+        <button class="btn btn-sm btn-secondary" {{action "orderVent"}}>Vent Strain</button>
         <button class="btn btn-sm btn-secondary" {{action "orderSweep"}}>Sensor Sweep</button>
         <button class="btn btn-sm btn-link" {{action "clearOrders"}}>Clear Orders</button>
       </div>

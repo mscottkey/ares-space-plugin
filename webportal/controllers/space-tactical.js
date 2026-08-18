@@ -133,6 +133,11 @@ export default Controller.extend(AuthenticatedController, {
   },
 
   @action
+  orderVent() {
+    this.sendOrder({ kind: 'vent' });
+  },
+
+  @action
   clearOrders() {
     this.sendOrder({ kind: 'clear' });
   },
