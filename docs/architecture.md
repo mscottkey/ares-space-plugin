@@ -294,7 +294,7 @@ All five resolved; the POC is built on these.
 ## 11. What the POC actually implements
 
 Built and covered by passing specs (`rspec` at the repo root; the count
-is noted per slice below, currently 324):
+is noted per slice below, currently 325):
 
 - Sectors, ships, terrain and engagements as Ohm models.
 - Square and hex geometry, facing, turn cost limited by agility, arcs.
@@ -1038,13 +1038,16 @@ green plus new coverage in `crew_dice_specs.rb`'s "roll side-effects
 channel" block (scripts a result with both keys via `FakeAdapter`, then
 scripts a bare FS3-shaped result and asserts nothing moved).
 
-324 specs pass (20 new: `rules_specs.rb` for `apply_strain`/
+325 specs pass (21 new: `rules_specs.rb` for `apply_strain`/
 `recover_strain`/`strained_out?` including the crossing-transition-only
 event; `strain_specs.rb` for the resolver lifecycle — skips movement and
 attacks while strained out, still rolls engineering and sensors, passive
-regen, `space/vent`, the botch source, stays `active?`/not `destroyed?`;
-and a "roll side-effects channel" block in `crew_dice_specs.rb` scripting
-`FakeAdapter` results with and without `:strain`/`:detail`).
+regen, `space/vent`, the botch source, stays `active?`/not `destroyed?`,
+and (found by scripting a multi-hardpoint ship whose first shot botches
+mid-phase) that a later hardpoint does not still fire in the round its
+own botch puts it over threshold; and a "roll side-effects channel"
+block in `crew_dice_specs.rb` scripting `FakeAdapter` results with and
+without `:strain`/`:detail`).
 
 This closes the gap §14 used to describe — extras documented but
 unreachable — and retires that item from §15.

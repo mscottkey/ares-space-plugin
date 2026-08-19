@@ -57,6 +57,28 @@ module AresMUSH
           expect(target.sections["hull"]["hull"]).to eq 3
         end
 
+        # A ship can fire more than once a round (multiple hardpoints).
+        # If the FIRST shot's own botch is what pushes it over threshold,
+        # a LATER hardpoint must not still fire in that same round just
+        # because the ship started the phase able to.
+        it "stops firing further hardpoints the moment its own botch puts it over threshold" do
+          TestConfig.override([ "space", "strain", "regen" ], 0)
+          # A Longbow mounts two forward weapons (Light Cannon, Torpedo).
+          attacker = spawn("Longbow One", "Longbow", x: 5, y: 5, facing: 4)
+          spawn("Mote", "Swarm Mote", x: 5, y: 6, facing: 0)
+          attacker.update(strain: attacker.strain_threshold - 1)
+
+          Orders.add_fire(attacker, "Mote", 0)
+          Orders.add_fire(attacker, "Mote", 1)
+          script(-1, -1)
+
+          report = Resolver.resolve_round(combat)
+
+          expect(report[:attacks].count).to eq 1
+          expect(report[:attacks].first[:weapon]).to eq "Light Cannon"
+          expect(attacker.strained_out?).to be true
+        end
+
         it "still rolls engineering (repair)" do
           covenant = spawn("Covenant", "Covenant", x: 10, y: 10)
           crew_with_char(covenant, "engineering", "Sato")

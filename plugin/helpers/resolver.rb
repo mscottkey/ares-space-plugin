@@ -132,13 +132,21 @@ module AresMUSH
       # Small ships shoot first: nimble craft get their shot off before a
       # capital's heavy batteries can bear. A strained-out ship is adrift
       # and cannot fire at all, whatever it was ordered to shoot.
+      #
+      # strained_out? is checked before EACH order, not once per ship: a
+      # multi-hardpoint ship's own first shot can botch and push it over
+      # threshold mid-phase (apply_roll_strain runs inside
+      # resolve_single_attack), and a later hardpoint must not still fire
+      # in that same round just because the ship started it able to.
       def self.resolve_attacks(sector, geometry, bias, ships, report)
         shooters = ships.sort_by { |s| [ s.silhouette, s.name.to_s ] }
 
         shooters.each do |ship|
-          next if !ship.active? || ship.strained_out?
+          next if !ship.active?
 
           Orders.fire_orders(ship).each do |order|
+            next if ship.strained_out?
+
             result = resolve_single_attack(sector, geometry, bias, ship, order, report)
             next if !result
             report[:attacks] << result
