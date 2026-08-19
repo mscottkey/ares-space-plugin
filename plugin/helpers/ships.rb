@@ -212,6 +212,24 @@ module AresMUSH
       end
 
       # ---------------------------------------------------------------
+      # Strain
+      # ---------------------------------------------------------------
+
+      # Returns the Rules events (e.g. :strained_out), so callers can tell
+      # whether this blow was the one that put the ship adrift.
+      def self.apply_strain(ship, amount)
+        return [] if amount.to_i <= 0
+        result = Rules.apply_strain(ship.strain.to_i, amount, ship.strain_threshold)
+        ship.update(strain: result[:strain])
+        result[:events]
+      end
+
+      def self.recover_strain(ship, amount)
+        return if amount.to_i <= 0
+        ship.update(strain: Rules.recover_strain(ship.strain.to_i, amount))
+      end
+
+      # ---------------------------------------------------------------
       # Movement
       # ---------------------------------------------------------------
 

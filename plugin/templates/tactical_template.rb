@@ -34,6 +34,11 @@ module AresMUSH
           y: viewer.pos[1],
           hull: Display.hull_bar(viewer))
       end
+
+      def strain_line
+        return "" if !viewer
+        "  #{Display.strain_bar(viewer)}"
+      end
     end
   end
 end

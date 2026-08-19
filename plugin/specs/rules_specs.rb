@@ -271,6 +271,47 @@ module AresMUSH
           expect(Rules.regen_shields(sections, 2)["fore"]["shields"]).to eq 0
         end
       end
+
+      describe :apply_strain do
+        it "adds strain and reports no event while under threshold" do
+          result = Rules.apply_strain(2, 3, 10)
+          expect(result[:strain]).to eq 5
+          expect(result[:events]).to be_empty
+        end
+
+        it "emits :strained_out on the blow that crosses the threshold" do
+          result = Rules.apply_strain(8, 2, 10)
+          expect(result[:strain]).to eq 10
+          expect(result[:events]).to eq [ :strained_out ]
+        end
+
+        it "does not re-emit :strained_out on a later blow past the threshold" do
+          once = Rules.apply_strain(8, 5, 10)
+          twice = Rules.apply_strain(once[:strain], 5, 10)
+          expect(twice[:strain]).to eq 18
+          expect(twice[:events]).to be_empty
+        end
+
+        it "never drives strain below zero" do
+          result = Rules.apply_strain(0, -5, 10)
+          expect(result[:strain]).to eq 0
+        end
+      end
+
+      describe :recover_strain do
+        it "reduces strain but clamps at zero" do
+          expect(Rules.recover_strain(3, 1)).to eq 2
+          expect(Rules.recover_strain(1, 5)).to eq 0
+        end
+      end
+
+      describe :strained_out? do
+        it "is false under the threshold and true at or past it" do
+          expect(Rules.strained_out?(5, 10)).to be false
+          expect(Rules.strained_out?(10, 10)).to be true
+          expect(Rules.strained_out?(11, 10)).to be true
+        end
+      end
     end
   end
 end

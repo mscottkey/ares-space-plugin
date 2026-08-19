@@ -117,6 +117,10 @@ module AresMUSH
         set(ship, "engineering", { "action" => "repair", "section" => "#{section}" })
       end
 
+      def self.set_vent(ship)
+        set(ship, "engineering", { "action" => "vent" })
+      end
+
       def self.set_sweep(ship)
         set(ship, "sensors", { "action" => "sweep" })
       end
@@ -139,6 +143,7 @@ module AresMUSH
         when "hold"    then issue_simple(ship, :hold)
         when "fire"    then issue_fire(ship, params)
         when "repair"  then issue_repair(ship, params)
+        when "vent"    then issue_vent(ship)
         when "sweep"   then issue_sweep(ship)
         when "clear"   then clear(ship) && success(t('space.orders_cleared', ship: ship.name))
         else failure(t('space.unknown_order', kind: kind))
@@ -219,6 +224,11 @@ module AresMUSH
       def self.issue_sweep(ship)
         set_sweep(ship)
         success(t('space.sweep_ordered', ship: ship.name))
+      end
+
+      def self.issue_vent(ship)
+        set_vent(ship)
+        success(t('space.vent_ordered', ship: ship.name))
       end
 
       def self.success(message, warnings = [])

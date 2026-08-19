@@ -294,7 +294,7 @@ All five resolved; the POC is built on these.
 ## 11. What the POC actually implements
 
 Built and covered by passing specs (`rspec` at the repo root; the count
-is noted per slice below, currently 304):
+is noted per slice below, currently 325):
 
 - Sectors, ships, terrain and engagements as Ohm models.
 - Square and hex geometry, facing, turn cost limited by agility, arcs.
@@ -886,17 +886,20 @@ ability to that game's pool, decide what `modifier: +2` means (two boost
 dice, say), collapse the symbol results to a net-successes integer, and
 return `advantage:`/`threat:`/`triumph:`/`despair:` as extras.
 
-It **cannot**, without further work:
+As of §16/§17 below, it also **can** spend net threat into `:strain` on
+the acting ship (a real, mechanical consequence - see §16) and describe
+advantage/triumph/despair in `:detail`, which now reaches the round
+report (see §17). That closes the gap this section used to describe here
+and retires the corresponding item from §15.
 
-- **Give those symbols any mechanical consequence.** The resolver
-  consumes exactly one number. Advantage cannot recover a shield point;
-  despair cannot wreck a hardpoint. Those are new plugin mechanics, not
-  adapter concerns.
-- **Get them in front of a player.** Extras survive into
-  `roll_station`'s return, but the resolver copies only named keys into
-  report entries and `display.rb` renders only those. Today `advantage:
-  2` is carried and then dropped. (`success_title` is the one extra that
-  reaches a report entry — and even that is currently unrendered.)
+It still **cannot**, without further work:
+
+- **Give arbitrary symbols beyond strain/detail any mechanical
+  consequence.** The resolver's side-effects channel is exactly two keys
+  wide. Advantage cannot recover a shield point through this channel;
+  despair cannot wreck a hardpoint. An adapter that wants more than
+  "spend threat into strain, narrate the rest" needs new plugin
+  mechanics, not just a wider hash.
 - **Escape FS3's calibration.** `hit_threshold`, `untrained_dice`,
   `range_mods`, `silhouette_tohit_clamp`, `Rules.damage_bonus(net) ==
   net - 1`, one success = one hull point repaired, and one success = one
@@ -925,6 +928,181 @@ and had no way to exercise a non-default setting.
   flagged as a real gap when the stamp was designed, not yet built
   because nothing displays a character's location today for it to
   attach to.
-- A place for dice-system extras to land in the round report (see §14) -
-  today an adapter can return them but nothing renders them.
 - Pseudo-real-time tick (§9), after the POC has been played.
+- The FFG adapter itself - blocked on the upgraded FFG plugin exposing
+  an integer net-success count. See §18.
+
+## 16. System strain — a second damage track
+
+Ship-level, not per-section. The per-section shields/hull model (§4)
+already covers the "zoned" half of FFG's damage model; strain is the
+whole-ship "stressed, not broken" pool sitting beside it, the same way
+FFG has it.
+
+**Why this and not a fork.** The alternative considered was a parallel
+FFG-flavoured combat mode. Two things ruled that out: the Ares FFG plugin
+(`AresMUSH/ares-ffg-plugin`, checked at HEAD `1f446d8`) has no ship or
+vehicle layer at all — no silhouette, hull, shields, arcs, or anything
+this plugin would need to defer to — so there's nothing to converge
+*with* short of building it here; and a range-band position model (the
+other FFG-native idea) isn't a `Geometry` mode but a genuinely different
+movement/arc/section-selection model, its own project (see §19). Strain
+and the roll side-effects channel (§17) are the two pieces of this slice
+that are system-agnostic and stand on their own for FS3 games — nothing
+here is FFG-only.
+
+**Model.** `SpaceShip#strain` (Integer, default 0). Threshold comes from
+`ShipBehavior#strain_threshold`: `space_ships.yml`'s `strain_threshold:`
+per class if set, else `silhouette * 2` — so every class defined before
+strain existed keeps working untouched.
+
+**Rules** (`plugin/helpers/rules.rb`, pure — no Ohm, no config):
+
+```ruby
+Rules.apply_strain(current, amount, threshold)  # => { strain:, events: [] }
+Rules.recover_strain(current, amount)           # => clamped at 0
+Rules.strained_out?(strain, threshold)          # => strain >= threshold
+```
+
+`apply_strain` emits `:strained_out` only on the blow that crosses the
+threshold, mirroring how `apply_damage` emits `:section_destroyed` once
+rather than on every hit after a section is already wrecked.
+
+**Behaviour.** A strained-out ship is **disabled, not destroyed**: its
+`status` stays `"active"`, so every existing `active?`/`destroyed?` check
+keeps meaning exactly what it always meant. `strained_out?` is a second,
+*derived* gate the resolver has to remember to ask about — deliberate
+(it would have been a bigger, riskier change to thread a new `status`
+value through everything that switches on it), but it means future phase
+code has to remember to check both.
+
+**Resolver.** A strained-out ship skips the movement and attack phases
+entirely (`Resolver.resolve_movement`/`resolve_attacks`), but still rolls
+engineering and sensors — being adrift is exactly when you want the
+engineer working. Recovery is passive, `strain.regen` per round
+(`space.yml`, same shape as `damage.shield_regen`), applied in
+`finish_round` alongside `Ships.regen_shields`. An engineering order,
+`space/vent` (`Orders.issue(ship, :vent)`), rolls engineering and spends
+successes to vent strain directly — the same shape as `space/repair`.
+
+**Where strain comes from**, in this slice:
+
+1. The roll side-effects channel (§17) — the FFG hook.
+2. A botched roll: `strain.on_botch` (`space.yml`, default 1), applied
+   whenever a roll's `:successes` comes back negative — FS3 botches at
+   -1. This is what gives strain a role for a game that never wires up
+   an FFG-style adapter: "the manoeuvre went badly and you stressed the
+   frame" is a natural, system-neutral reading, not an FFG-only idea
+   wearing an FS3 costume.
+3. GM/engineering adjustment (direct `ship.update(strain: ...)`, same as
+   any other stat).
+
+`Resolver.apply_roll_strain(ship, roll, report)` is the one place a roll
+becomes strain — every phase that rolls (sweeps, evasion, attacks,
+engineering) funnels through it rather than reimplementing the botch
+check.
+
+Deliberately **not** built here: strain-dealing weapon qualities, or
+speed-pushing strain. Both are real FFG concepts, but each is its own
+feature and neither is needed to give advantage/threat a home.
+
+## 17. The roll side-effects channel
+
+Two optional keys an adapter's roll result may carry, documented in
+`plugin/dice/dice.rb` alongside the rest of the contract (§14) and read
+by the resolver when present:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `:strain` | Integer | strain inflicted on the **acting** ship |
+| `:detail` | String | short narrative note, rendered in the round report |
+
+Both are additive to the base contract — `:successes` remains the only
+required key, and `Rules` is untouched by either. `Dice.invoke` already
+merges an adapter's whole hash through, so no filtering was needed to
+add these; the change was entirely in what the resolver and `display.rb`
+do with keys that were already arriving and being dropped.
+
+`:strain` is spent through `Resolver.apply_roll_strain` (§16) — additive
+to whatever that same call applies for a botched roll, so a roll can be
+both a mechanical botch *and* carry adapter-supplied strain in one shot.
+`:detail` rides into the matching report entry (sweep/evade/attack/
+engineering) under its own `:detail` key and is rendered by
+`Display.render_report` next to that line.
+
+An FFG adapter's mapping, once it exists: net successes → `:successes`;
+net threat → `:strain`; advantage/triumph/despair prose → `:detail`. The
+FS3 adapter returns neither key, so a game that never sets `dice_system`
+sees no behaviour change — verified by the existing 304 specs staying
+green plus new coverage in `crew_dice_specs.rb`'s "roll side-effects
+channel" block (scripts a result with both keys via `FakeAdapter`, then
+scripts a bare FS3-shaped result and asserts nothing moved).
+
+325 specs pass (21 new: `rules_specs.rb` for `apply_strain`/
+`recover_strain`/`strained_out?` including the crossing-transition-only
+event; `strain_specs.rb` for the resolver lifecycle — skips movement and
+attacks while strained out, still rolls engineering and sensors, passive
+regen, `space/vent`, the botch source, stays `active?`/not `destroyed?`,
+and (found by scripting a multi-hardpoint ship whose first shot botches
+mid-phase) that a later hardpoint does not still fire in the round its
+own botch puts it over threshold; and a "roll side-effects channel"
+block in `crew_dice_specs.rb` scripting `FakeAdapter` results with and
+without `:strain`/`:detail`).
+
+This closes the gap §14 used to describe — extras documented but
+unreachable — and retires that item from §15.
+
+## 18. What the FFG adapter will need from the FFG plugin
+
+Not built in this slice. The FFG plugin is being upgraded in parallel to
+cover full advantage handling and a web portal; this section is a target
+list for that work, written against HEAD `1f446d8`, so both sides can
+meet in the middle. **If the upgrade reshapes the roll API, re-read
+`rolls.rb` before writing the adapter rather than trusting the mapping
+table here.**
+
+Full advantage handling is the upstream half of §17: the FFG plugin
+decides *what* advantage and threat buy in FFG terms; `:strain`/
+`:detail` are where the ship-combat consequences land here. The two
+designs fit together without either side knowing the other's internals.
+
+One blocker is concrete in today's code: `Ffg.determine_outcome(dice)`
+computes `successes` and `failures` locally and then **discards the
+magnitude**, returning `FfgRollResults` with `successful` as a *Boolean*.
+This plugin's contract needs an integer.
+
+For the adapter to be writable, the upgraded plugin should expose:
+
+1. **Net success count as an Integer** (`successes − failures`), not just
+   `successful`. The hard requirement — damage scales off it.
+2. **A structured roll entry point.** Today the only way in is
+   `Ffg.roll_ability(char, roll_str)`, where `roll_str` is a *display*
+   string like `"Piloting Space+2D+1B"`, reparsed internally. An adapter
+   would have to build strings; a params-object or keyword entry point
+   would be far more robust.
+3. **Triumph/despair as counts**, not Booleans, if they should scale
+   into `:detail` or a future extension of the side-effects channel.
+4. **A stable home for these.** The roll functions currently live in
+   `plugin/rolls.rb`, not `plugin/public/`, so they carry no stability
+   contract by Ares convention.
+
+**Install note worth documenting:** the FFG plugin's default *Genesys*
+config has no piloting or gunnery skills at all — only the `sw-eote` and
+`sw-rebellion` config sets do. A Star Wars config set is a prerequisite
+for `station_skills` to resolve, and `config/check` (§14's
+`Dice.check_config`) will already report this correctly once an adapter
+exists.
+
+## 19. Deferred (with reasons, so they aren't rediscovered)
+
+- **Range bands.** Not a `Geometry` mode — a different position model.
+  `Rules.range_mod` is already abstract (it takes scalars), so a future
+  band mode is feasible, but it needs new rules for movement, the
+  firing-arc gate, and section selection, plus a parallel
+  `space-plot.js` renderer (which duplicates the Ruby direction tables
+  in JS — see §8). Its own project.
+- **Critical hit tables.** A real FFG concept with no analogue here, and
+  not needed to make advantage/threat matter.
+- **Fleet scale.** Agreed as its own later slice. Worth noting it is
+  *not* FFG-specific in shape: "a big battle resolves over a few command
+  rolls and the PCs' actions tilt it" works on FS3 equally well.

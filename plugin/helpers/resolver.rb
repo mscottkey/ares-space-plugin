@@ -26,7 +26,8 @@ module AresMUSH
           evades: [],
           attacks: [],
           engineering: [],
-          destroyed: []
+          destroyed: [],
+          strained_out: []
         }
 
         reset_round_state(ships)
@@ -55,12 +56,15 @@ module AresMUSH
           next if !order || order["action"] != "sweep"
 
           roll = Sensors.sweep(ship)
-          report[:sweeps] << {
+          entry = {
             ship: ship.name,
             roller: roll[:roller],
             successes: roll[:successes],
             range: roll[:range]
           }
+          entry[:detail] = roll[:detail] if roll[:detail]
+          report[:sweeps] << entry
+          apply_roll_strain(ship, roll, report)
         end
       end
 
@@ -74,19 +78,25 @@ module AresMUSH
           margin = roll[:successes].to_i
           ship.update(evade_margin: margin)
 
-          report[:evades] << {
+          entry = {
             ship: ship.name,
             roller: roll[:roller],
             margin: margin,
             success_title: roll[:success_title]
           }
+          entry[:detail] = roll[:detail] if roll[:detail]
+          report[:evades] << entry
+          apply_roll_strain(ship, roll, report)
         end
       end
 
       # Everyone moves at once, so orders are given against the positions
-      # at the top of the round.
+      # at the top of the round. A strained-out ship is adrift: skipped
+      # here entirely, whatever helm order it was given.
       def self.resolve_movement(sector, geometry, ships, report)
         ships.each do |ship|
+          next if ship.strained_out?
+
           order = Orders.get(ship, "helm")
           next if !order || order["action"] != "move"
 
@@ -120,7 +130,14 @@ module AresMUSH
       end
 
       # Small ships shoot first: nimble craft get their shot off before a
-      # capital's heavy batteries can bear.
+      # capital's heavy batteries can bear. A strained-out ship is adrift
+      # and cannot fire at all, whatever it was ordered to shoot.
+      #
+      # strained_out? is checked before EACH order, not once per ship: a
+      # multi-hardpoint ship's own first shot can botch and push it over
+      # threshold mid-phase (apply_roll_strain runs inside
+      # resolve_single_attack), and a later hardpoint must not still fire
+      # in that same round just because the ship started it able to.
       def self.resolve_attacks(sector, geometry, bias, ships, report)
         shooters = ships.sort_by { |s| [ s.silhouette, s.name.to_s ] }
 
@@ -128,7 +145,9 @@ module AresMUSH
           next if !ship.active?
 
           Orders.fire_orders(ship).each do |order|
-            result = resolve_single_attack(sector, geometry, bias, ship, order)
+            next if ship.strained_out?
+
+            result = resolve_single_attack(sector, geometry, bias, ship, order, report)
             next if !result
             report[:attacks] << result
             if result[:destroyed]
@@ -138,7 +157,7 @@ module AresMUSH
         end
       end
 
-      def self.resolve_single_attack(sector, geometry, bias, ship, order)
+      def self.resolve_single_attack(sector, geometry, bias, ship, order, report)
         target = Ships.find_ship_in_sector(sector, order["target"])
         hardpoint_index = order["hardpoint"].to_i
         hp = Ships.hardpoint(ship, hardpoint_index)
@@ -208,6 +227,8 @@ module AresMUSH
           distance: distance,
           arc: firing_arc
         }
+        result[:detail] = roll[:detail] if roll[:detail]
+        apply_roll_strain(ship, roll, report)
 
         if !Rules.hit?(successes, evade, SpaceConfig.hit_threshold)
           result[:hit] = false
@@ -236,29 +257,40 @@ module AresMUSH
         result
       end
 
+      # A strained-out ship still rolls engineering - being adrift is
+      # exactly when you want the engineer working, and venting strain is
+      # how it stops being adrift at all.
       def self.resolve_engineering(ships, report)
         ships.each do |ship|
           order = Orders.get(ship, "engineering")
-          next if !order || order["action"] != "repair"
+          next if !order || ![ "repair", "vent" ].include?(order["action"])
 
-          section_name = order["section"]
           station = Orders.station_for_role(ship, :engineering)
           roll = Crew.roll_station(ship, station)
           successes = roll[:successes].to_i
 
-          repaired = 0
-          if successes > 0
-            repaired = successes
-            Ships.repair(ship, section_name, repaired)
+          entry = { ship: ship.name, roller: roll[:roller], successes: successes }
+
+          if order["action"] == "repair"
+            repaired = 0
+            if successes > 0
+              repaired = successes
+              Ships.repair(ship, order["section"], repaired)
+            end
+            entry[:section] = order["section"]
+            entry[:repaired] = repaired
+          else
+            vented = 0
+            if successes > 0
+              vented = successes
+              Ships.recover_strain(ship, vented)
+            end
+            entry[:vented] = vented
           end
 
-          report[:engineering] << {
-            ship: ship.name,
-            roller: roll[:roller],
-            section: section_name,
-            successes: successes,
-            repaired: repaired
-          }
+          entry[:detail] = roll[:detail] if roll[:detail]
+          report[:engineering] << entry
+          apply_roll_strain(ship, roll, report)
         end
       end
 
@@ -270,7 +302,10 @@ module AresMUSH
         end
 
         ships.each do |ship|
-          Ships.regen_shields(ship, struck[ship.name] || []) if ship.active?
+          if ship.active?
+            Ships.regen_shields(ship, struck[ship.name] || [])
+            Ships.recover_strain(ship, SpaceConfig.strain_regen)
+          end
           Orders.clear(ship)
           ship.update(sweep_range: 0)
         end
@@ -339,6 +374,20 @@ module AresMUSH
         end
       end
 
+      # The one place a roll's result becomes strain on the acting ship's
+      # own hull - whether the adapter spent net threat into :strain (the
+      # FFG hook), the roll botched (successes < 0, config
+      # strain.on_botch), or both. Every phase that rolls funnels through
+      # here rather than reimplementing it.
+      def self.apply_roll_strain(ship, roll, report)
+        amount = roll[:strain].to_i
+        amount += SpaceConfig.strain_on_botch if roll[:successes].to_i < 0
+        return if amount <= 0
+
+        events = Ships.apply_strain(ship, amount)
+        report[:strained_out] << ship.name if events.include?(:strained_out)
+      end
+
       def self.effective_max_speed(ship)
         return ship.max_speed if ship.small_craft?
         return 0 if !ship.system_online?("engines")
@@ -350,6 +399,7 @@ module AresMUSH
         shots = report[:attacks].count { |a| a.key?(:hit) }
         parts = [ "#{shots} shot(s), #{hits} hit(s)" ]
         parts << "#{report[:moves].count} moved" if report[:moves].any?
+        parts << "strained out: #{report[:strained_out].join(', ')}" if report[:strained_out].any?
         parts << "destroyed: #{report[:destroyed].join(', ')}" if report[:destroyed].any?
         parts.join("; ")
       end

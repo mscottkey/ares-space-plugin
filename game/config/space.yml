@@ -121,6 +121,30 @@ space:
     shield_regen: 1
 
   # ---------------------------------------------------------------------
+  # Strain
+  # ---------------------------------------------------------------------
+  # A whole-ship "stressed, not broken" pool, separate from the per-section
+  # shields/hull above - see docs/architecture.md. A ship whose strain
+  # reaches its class's strain_threshold (space_ships.yml; defaults off
+  # silhouette when unset) goes adrift: no movement or attacks until it
+  # drops back below threshold. Engineering and sensors keep working while
+  # adrift - that's exactly when you want the engineer at it.
+  strain:
+    # Recovered passively each round, same shape as damage.shield_regen.
+    regen: 1
+    # Strain added to the acting ship when a roll botches (successes < 0).
+    # Deliberately set ABOVE regen: both apply every round, so a value
+    # equal to regen would cancel out exactly on the common case of one
+    # botch in a round, leaving strain unable to accumulate at all and
+    # defeating the point of a botch source in the first place. At 2,
+    # one bad round nets +1 that sticks unless something recovers it
+    # faster - passive regen on a clean round, or a deliberate
+    # engineering vent. Set to 0 if this game's dice system never
+    # produces negative successes and you'd rather strain stay purely an
+    # adapter-driven (e.g. FFG) concern.
+    on_botch: 2
+
+  # ---------------------------------------------------------------------
   # Terrain
   # ---------------------------------------------------------------------
   # sensor_mod  - dice modifier when detecting something inside it

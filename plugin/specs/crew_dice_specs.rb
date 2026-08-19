@@ -185,6 +185,51 @@ module AresMUSH
         end
       end
 
+      # The two optional side-effects keys (see dice.rb) - the FFG hook.
+      describe "the roll side-effects channel" do
+        it "inflicts strain on the acting ship and carries the detail into the report" do
+          TestConfig.override([ "space", "strain", "regen" ], 0)
+          ship = spawn("Talon One", "Talon", x: 5, y: 5)
+          crew_with_char(ship, "pilot", "Alex")
+          Orders.set_evade(ship)
+          Dice::FakeAdapter.script(
+            { successes: 3, strain: 2, detail: "Triumph: the engines sing." }
+          )
+
+          report = Resolver.resolve_round(combat)
+
+          expect(ship.strain).to eq 2
+          expect(report[:evades].first[:detail]).to eq "Triumph: the engines sing."
+        end
+
+        it "reports :strained_out the round the side channel crosses the threshold" do
+          TestConfig.override([ "space", "strain", "regen" ], 0)
+          ship = spawn("Talon One", "Talon", x: 5, y: 5)
+          crew_with_char(ship, "pilot", "Alex")
+          ship.update(strain: ship.strain_threshold - 1)
+          Orders.set_evade(ship)
+          Dice::FakeAdapter.script({ successes: 3, strain: 1 })
+
+          report = Resolver.resolve_round(combat)
+
+          expect(report[:strained_out]).to eq [ "Talon One" ]
+        end
+
+        # The FS3-shaped default result carries neither key, so a game
+        # that never wires up an FFG-style adapter sees no change.
+        it "leaves strain and the report untouched for an FS3-shaped result" do
+          ship = spawn("Talon One", "Talon", x: 5, y: 5)
+          crew_with_char(ship, "pilot", "Alex")
+          Orders.set_evade(ship)
+
+          report = Resolver.resolve_round(combat)
+
+          expect(ship.strain).to eq 0
+          expect(report[:evades].first).to_not have_key(:detail)
+          expect(report[:strained_out]).to be_empty
+        end
+      end
+
       # A broken dice system must not take the round down with it - the
       # resolver spends ammo before it rolls.
       describe "when the dice system fails mid-round" do

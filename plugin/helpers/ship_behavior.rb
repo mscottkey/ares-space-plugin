@@ -8,7 +8,7 @@ module AresMUSH
     #
     # Includers must provide: name, ship_class, x, y, facing, speed,
     # sections, stations, orders, ammo, status, sector, sweep_range,
-    # evade_margin, and an update(hash).
+    # evade_margin, strain, and an update(hash).
     module ShipBehavior
 
       def pos
@@ -81,6 +81,22 @@ module AresMUSH
 
       def total_hull
         Rules.hull_totals(self.sections)
+      end
+
+      # Ship-class config can set strain_threshold: explicitly
+      # (space_ships.yml); left unset, it scales off silhouette so every
+      # class defined before strain existed keeps working untouched.
+      def strain_threshold
+        configured = class_data["strain_threshold"]
+        return configured.to_i if configured
+        silhouette * 2
+      end
+
+      # Disabled, not destroyed: status stays "active", so every existing
+      # active?/destroyed? check keeps meaning what it always meant. This
+      # is a second, derived gate the resolver has to ask about.
+      def strained_out?
+        Rules.strained_out?(self.strain.to_i, strain_threshold)
       end
 
       def crew_at(station)

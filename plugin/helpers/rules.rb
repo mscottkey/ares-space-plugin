@@ -211,6 +211,37 @@ module AresMUSH
         end
         copy
       end
+
+      # -----------------------------------------------------------------
+      # System strain
+      # -----------------------------------------------------------------
+
+      # A second, whole-ship damage track - "stressed, not broken" rather
+      # than the per-section shields/hull above. Ship-level because it's
+      # the crew and the frame under load, not any one arc.
+      #
+      # Returns { strain:, events: [] }, never negative. Emits
+      # :strained_out only on the transition that crosses the threshold,
+      # the same way apply_damage emits :section_destroyed once rather
+      # than on every blow after a section is already wrecked.
+      def self.apply_strain(current, amount, threshold)
+        before = current.to_i
+        after = [ before + amount.to_i, 0 ].max
+        events = []
+        events << :strained_out if after >= threshold.to_i && before < threshold.to_i
+        { strain: after, events: events }
+      end
+
+      # Passive regen and a venting engineering order both just remove
+      # strain; neither cares about the threshold, so this stays a plain
+      # clamp rather than sharing apply_strain's event bookkeeping.
+      def self.recover_strain(current, amount)
+        [ current.to_i - amount.to_i, 0 ].max
+      end
+
+      def self.strained_out?(strain, threshold)
+        strain.to_i >= threshold.to_i
+      end
     end
   end
 end

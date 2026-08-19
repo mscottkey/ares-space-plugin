@@ -41,6 +41,8 @@ module AresMUSH
           return SpaceFireCmd
         when 'repair'
           return SpaceRepairCmd
+        when 'vent'
+          return SpaceVentCmd
         when 'sweep'
           return SpaceSweepCmd
         when 'clear'

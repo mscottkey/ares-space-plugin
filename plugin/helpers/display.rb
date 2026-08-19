@@ -117,6 +117,12 @@ module AresMUSH
         "S #{shields}/#{max_shields} H #{totals[:current]}/#{totals[:max]}"
       end
 
+      def self.strain_bar(ship)
+        line = "Strain #{ship.strain.to_i}/#{ship.strain_threshold}"
+        line += " %xr#{t('space.adrift_marker')}%xn" if ship.strained_out?
+        line
+      end
+
       def self.render_sections(ship)
         ship.sections.map do |name, section|
           systems = (section["systems"] || [])
@@ -165,6 +171,7 @@ module AresMUSH
         when "evade" then t('space.order_evade')
         when "hold" then t('space.order_hold')
         when "repair" then t('space.order_repair', section: order["section"])
+        when "vent" then t('space.order_vent')
         when "sweep" then t('space.order_sweep')
         else "#{order['action']}"
         end
@@ -176,12 +183,16 @@ module AresMUSH
         lines << "%xh--- #{t('space.round_header', round: report[:round], sector: report[:sector])} ---%xn"
 
         report[:sweeps].each do |s|
-          lines << t('space.report_sweep', ship: s[:ship], roller: s[:roller],
-                     successes: s[:successes], range: s[:range])
+          line = t('space.report_sweep', ship: s[:ship], roller: s[:roller],
+                   successes: s[:successes], range: s[:range])
+          line += " %xx(#{s[:detail]})%xn" if s[:detail]
+          lines << line
         end
 
         report[:evades].each do |e|
-          lines << t('space.report_evade', ship: e[:ship], roller: e[:roller], margin: e[:margin])
+          line = t('space.report_evade', ship: e[:ship], roller: e[:roller], margin: e[:margin])
+          line += " %xx(#{e[:detail]})%xn" if e[:detail]
+          lines << line
         end
 
         report[:moves].each do |m|
@@ -197,12 +208,15 @@ module AresMUSH
           if a[:error]
             lines << "%xx#{t('space.report_attack_failed', attacker: a[:attacker], target: a[:target], reason: a[:error])}%xn"
           elsif !a[:hit]
-            lines << t('space.report_miss', attacker: a[:attacker], weapon: a[:weapon],
-                       target: a[:target], successes: a[:successes], evade: a[:evade])
+            line = t('space.report_miss', attacker: a[:attacker], weapon: a[:weapon],
+                     target: a[:target], successes: a[:successes], evade: a[:evade])
+            line += " %xx(#{a[:detail]})%xn" if a[:detail]
+            lines << line
           else
             line = "%xh" + t('space.report_hit', attacker: a[:attacker], weapon: a[:weapon],
                              target: a[:target], damage: a[:damage], section: a[:section]) + "%xn"
             line += " #{t('space.systems_only_note')}" if a[:systems_only]
+            line += " %xx(#{a[:detail]})%xn" if a[:detail]
             lines << line
             if a[:systems_lost] && a[:systems_lost].any?
               lines << "    %xr#{t('space.systems_lost', systems: a[:systems_lost].join(', '))}%xn"
@@ -211,8 +225,19 @@ module AresMUSH
         end
 
         report[:engineering].each do |e|
-          lines << t('space.report_repair', ship: e[:ship], roller: e[:roller],
-                     section: e[:section], amount: e[:repaired])
+          line =
+            if e.key?(:repaired)
+              t('space.report_repair', ship: e[:ship], roller: e[:roller],
+                section: e[:section], amount: e[:repaired])
+            else
+              t('space.report_vent', ship: e[:ship], roller: e[:roller], amount: e[:vented])
+            end
+          line += " %xx(#{e[:detail]})%xn" if e[:detail]
+          lines << line
+        end
+
+        report[:strained_out].uniq.each do |name|
+          lines << "%xr*** #{t('space.report_strained_out', ship: name)} ***%xn"
         end
 
         report[:destroyed].uniq.each do |name|
