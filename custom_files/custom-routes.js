@@ -13,4 +13,10 @@ export default function setupCustomRoutes(router) {
   // Tactical grids are the exception you drop into when there's a fight.
   router.route('space-sectors', { path: '/space/sectors' });
   router.route('space-tactical', { path: '/space/sector/:id' });
+
+  // The ship roster and per-ship detail - reachable from the map (a
+  // body's "present" list links here) and directly, for a reference
+  // view of a hull's status outside of a tactical engagement.
+  router.route('space-ships', { path: '/space/ships' });
+  router.route('space-ship', { path: '/space/ship/:id' });
 }

@@ -127,6 +127,12 @@
 .space-round-log { white-space: pre-wrap; max-height: 20rem; overflow-y: auto; }
 .space-status-engaged { font-weight: 600; }
 .space-status-quiet { opacity: 0.7; }
+.space-adrift { color: #b3413d; font-weight: 600; margin-left: 0.4rem; }
+.space-station-unmanned td { opacity: 0.6; font-style: italic; }
+.space-ship-row-destroyed td { opacity: 0.55; text-decoration: line-through; }
+.space-ship-faction { opacity: 0.7; font-weight: 400; }
+.space-ship-summary, .space-ship-location { opacity: 0.85; }
+.space-ship-engaged-note { color: #b3413d; font-weight: 600; }
 
 // =====================================================================
 // System map - the standard view of space

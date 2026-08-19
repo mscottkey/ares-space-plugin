@@ -51,7 +51,9 @@
     {{#if this.selectedBody.ships.length}}
       <h4>Present</h4>
       <ul class="space-body-ships-list">
-        {{#each this.selectedBody.ships as |name|}}<li>{{name}}</li>{{/each}}
+        {{#each this.selectedBody.ships as |s|}}
+          <li><LinkTo @route="space-ship" @model={{s.id}}>{{s.name}}</LinkTo></li>
+        {{/each}}
       </ul>
     {{/if}}
 

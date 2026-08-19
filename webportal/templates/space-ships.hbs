@@ -1,0 +1,34 @@
+{{page-title "Ships"}}
+
+<h1>Ships</h1>
+
+{{#if this.model.length}}
+  <table class="table space-ship-list">
+    <thead>
+      <tr>
+        <th>Ship</th><th>Class</th><th>Faction</th><th>Status</th>
+        <th>Hull</th><th>Shields</th><th>Strain</th><th>Crew</th><th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each this.model as |s|}}
+        <tr class="{{if (eq s.status 'destroyed') 'space-ship-row-destroyed'}}">
+          <td><LinkTo @route="space-ship" @model={{s.id}}>{{s.name}}</LinkTo></td>
+          <td>{{s.ship_class}}</td>
+          <td>{{s.faction}}</td>
+          <td>{{s.status}}</td>
+          <td>{{s.hull}}/{{s.max_hull}}</td>
+          <td>{{s.shields}}/{{s.max_shields}}</td>
+          <td>
+            {{s.strain}}/{{s.strain_threshold}}
+            {{#if s.strained_out}}<span class="space-adrift">ADRIFT</span>{{/if}}
+          </td>
+          <td>{{s.crew_count}}</td>
+          <td>{{s.location}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <p>No ships to show - you aren't crewing any, and staff see the full roster here.</p>
+{{/if}}

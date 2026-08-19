@@ -26,6 +26,77 @@ module AresMUSH
         SpaceSector.all.to_a.map { |s| sector_summary(s) }.sort_by { |s| s[:name].to_s }
       end
 
+      # A one-line description of where a ship physically is right now -
+      # tactical sector, a system body, a bare ring, under way, or
+      # nowhere at all (spawned straight into a sector with no system
+      # placement - see space/station). Shared by the ships roster and
+      # the ship detail page so the two surfaces never describe a
+      # ship's location differently.
+      def self.location_description(ship)
+        if ship.in_transit?
+          return t('space.location_in_transit',
+            destination: Systems.destination_name(ship.system_key, ship.destination_key),
+            eta: Astro.format_duration(ship.eta_seconds))
+        end
+
+        if ship.sector
+          combat = Engagements.active_combat(ship.sector)
+          return combat ? t('space.location_in_combat', sector: ship.sector.name)
+                        : t('space.location_in_sector', sector: ship.sector.name)
+        end
+
+        if !ship.system_key.to_s.empty?
+          if !ship.location_key.to_s.empty?
+            name = Systems.body_name(ship.system_key, ship.location_key) || ship.location_key
+            return t('space.location_at_body', body: name)
+          elsif ship.system_ring
+            return t('space.location_at_ring', ring: ship.system_ring.to_i)
+          end
+        end
+
+        t('space.location_unplaced')
+      end
+
+      # The roster row for one ship - deliberately lighter than
+      # ship_detail (no sections/hardpoints/crew breakdown), since this
+      # is a browse-and-click-through list, not the detail page itself.
+      def self.ship_summary(ship)
+        {
+          id: ship.id,
+          name: ship.name,
+          ship_class: ship.ship_class,
+          faction: ship.faction,
+          status: ship.status,
+          silhouette: ship.silhouette,
+          hull: ship.total_hull[:current],
+          max_hull: ship.total_hull[:max],
+          shields: ship.sections.values.sum { |s| s["shields"].to_i },
+          max_shields: ship.sections.values.sum { |s| (s["max_shields"] || 0).to_i },
+          strain: ship.strain.to_i,
+          strain_threshold: ship.strain_threshold,
+          strained_out: ship.strained_out?,
+          crew_count: ship.stations.values.count { |v| !v.to_s.empty? },
+          location: location_description(ship)
+        }
+      end
+
+      # Staff see the whole roster. A player sees every ship they hold a
+      # station on - not just Ships.ship_for_char's single "current"
+      # ship, the same way space/crew can seat a character on more than
+      # one hull at once. Mirrors the staff/own-only split sectors_list
+      # and the tactical/ship-detail handlers already use.
+      def self.ships_list(char, is_admin)
+        ships =
+          if is_admin
+            Ships.all_ships
+          elsif char
+            Ships.all_ships.select { |s| !Ships.station_for_char(s, char).nil? }
+          else
+            []
+          end
+        ships.map { |s| ship_summary(s) }.sort_by { |s| s[:name].to_s }
+      end
+
       # Full state of a ship - only ever sent for ships the viewer is
       # entitled to see in detail (their own, or anything if they're staff).
       def self.ship_detail(ship)
@@ -63,6 +134,10 @@ module AresMUSH
             }
           end,
           orders: orders_payload(ship),
+          location: location_description(ship),
+          sector_id: ship.sector ? ship.sector.id : nil,
+          sector_name: ship.sector ? ship.sector.name : nil,
+          in_combat: ship.sector ? !Engagements.active_combat(ship.sector).nil? : false,
           identified: true
         }
       end
@@ -255,7 +330,7 @@ module AresMUSH
           faction: faction,
           faction_color: Systems.faction_color(faction),
           is_belt: "#{body_data['type']}" == "belt",
-          ships: present.map { |s| s.name },
+          ships: present.map { |s| { id: s.id, name: s.name } },
           engaged: !engagement.nil?,
           sector_id: engagement ? engagement[:sector].id : nil,
           round: engagement ? engagement[:combat].round.to_i : nil,

@@ -1,0 +1,85 @@
+{{page-title this.model.name}}
+
+<h1>{{this.model.name}} <span class="space-ship-faction">[{{this.model.faction}}]</span></h1>
+<p class="space-ship-summary">
+  {{this.model.ship_class}} &mdash; silhouette {{this.model.silhouette}}, status {{this.model.status}}
+</p>
+<p class="space-ship-location">{{this.model.location}}</p>
+
+{{#if this.model.in_combat}}
+  <p class="space-ship-engaged-note">
+    In an active engagement.
+    <LinkTo @route="space-tactical" @model={{this.model.sector_id}}>Open tactical plot</LinkTo>
+  </p>
+{{/if}}
+
+<h4>Strain</h4>
+<p>
+  {{this.model.strain}}/{{this.model.strain_threshold}}
+  {{#if this.model.strained_out}}<span class="space-adrift">ADRIFT</span>{{/if}}
+</p>
+
+<h4>Sections</h4>
+<table class="table table-sm space-sections">
+  <thead>
+    <tr><th>Section</th><th>Shields</th><th>Hull</th><th>Systems</th></tr>
+  </thead>
+  <tbody>
+    {{#each this.model.sections as |s|}}
+      <tr class="{{if s.destroyed 'space-section-destroyed'}}">
+        <td>{{s.name}}</td>
+        <td>{{s.shields}}/{{s.max_shields}}</td>
+        <td>{{s.hull}}/{{s.max_hull}}</td>
+        <td>
+          {{#if s.systems.length}}
+            {{#each s.systems as |sys|}}<span class="space-system">{{sys}}</span>{{/each}}
+          {{else}}&mdash;{{/if}}
+        </td>
+      </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<h4>Hardpoints</h4>
+{{#if this.model.hardpoints.length}}
+  <table class="table table-sm space-hardpoints">
+    <thead>
+      <tr><th>#</th><th>Weapon</th><th>Arc</th><th>Scale</th><th>Damage</th><th>Range</th><th>Ammo</th></tr>
+    </thead>
+    <tbody>
+      {{#each this.model.hardpoints as |hp|}}
+        <tr>
+          <td>{{hp.index}}</td>
+          <td>{{hp.weapon}}</td>
+          <td>{{hp.arc}}</td>
+          <td>{{hp.scale}}</td>
+          <td>{{hp.damage}}</td>
+          <td>{{hp.range}}</td>
+          <td>{{if hp.ammo hp.ammo "-"}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <p>No hardpoints.</p>
+{{/if}}
+
+<h4>Crew</h4>
+{{#if this.model.stations.length}}
+  <table class="table table-sm space-stations">
+    <thead>
+      <tr><th>Station</th><th>Crew</th><th>Skill</th></tr>
+    </thead>
+    <tbody>
+      {{#each this.model.stations as |s|}}
+        <tr class="{{unless s.manned 'space-station-unmanned'}}">
+          <td>{{s.station}}</td>
+          <td>{{s.crew}}</td>
+          <td>{{s.skill}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+{{else}}
+  <p>No stations on this hull.</p>
+{{/if}}

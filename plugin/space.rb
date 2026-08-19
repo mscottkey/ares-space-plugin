@@ -141,6 +141,8 @@ module AresMUSH
         return SpaceTacticalRequestHandler
       when "spaceSectors"
         return SpaceSectorsRequestHandler
+      when "spaceShips"
+        return SpaceShipsRequestHandler
       when "spaceShip"
         return SpaceShipRequestHandler
       when "spaceOrder"
