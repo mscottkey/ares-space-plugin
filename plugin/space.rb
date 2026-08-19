@@ -108,6 +108,21 @@ module AresMUSH
       nil
     end
 
+    # Reads one arg from a web request, tolerant of whether the framework
+    # handed the args hash back with string or symbol keys.
+    #
+    # Found live: request.args comes back as string keys
+    # ({"id"=>"1"}) on at least one real deployment, while every request
+    # handler in plugin/web/ was written reading request.args[:id] - a
+    # symbol lookup against a string-keyed hash returns nil silently, so
+    # every id-bearing web page failed with a blank-name "not found"
+    # error instead of a working sector/ship/system lookup. Checking
+    # both key shapes here, once, is cheaper than trusting either
+    # convention is stable across AresMUSH deployments/versions.
+    def self.arg(request, key)
+      request.args["#{key}"] || request.args[key.to_sym]
+    end
+
     # Emits the result of Orders.issue to a telnet client. The web portal
     # hands the same structure back as JSON, so both surfaces report a
     # given order identically.

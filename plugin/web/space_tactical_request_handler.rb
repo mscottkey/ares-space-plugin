@@ -7,8 +7,8 @@ module AresMUSH
         return error if error
 
         enactor = request.enactor
-        sector = SpaceSector[request.args[:id]]
-        return { error: t('space.sector_not_found', name: request.args[:id]) } if !sector
+        sector = SpaceSector[Space.arg(request, :id)]
+        return { error: t('space.sector_not_found', name: Space.arg(request, :id)) } if !sector
 
         is_admin = enactor.is_admin?
         viewer = Ships.ship_for_char(enactor)

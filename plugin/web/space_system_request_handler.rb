@@ -10,7 +10,7 @@ module AresMUSH
         enactor = request.enactor
         ship = Ships.ship_for_char(enactor)
 
-        key = request.args[:id]
+        key = Space.arg(request, :id)
         key = Systems.find_system_key(key) if key
         if !key
           key = (ship && !ship.system_key.to_s.empty?) ? ship.system_key : Systems.default_system_key
