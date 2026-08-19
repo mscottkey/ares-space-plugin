@@ -110,17 +110,40 @@ export default Component.extend({
   // it were just another body at its parent's ring, landed whichever
   // bearing that raw angle put it at - nowhere near the parent, and
   // farther from the star than bodies several rings out.
-  bodies: computed('system.bodies.[]', 'selectedKey', 'animate', 'basePeriod', 'labelSize', function () {
+  // A body caught up in an active ship transit - either endpoint of a
+  // course line - holds its ambient orbit spin still, so its rendered
+  // position matches the authoritative one WebData.ship_map_entry drew
+  // the line to. The spin is decorative "looks alive" motion (see
+  // Astro.orbit_period's own docstring: not meant to be astronomically
+  // honest), not a real clock, so left running it visibly drifts the
+  // destination away from the line within moments of a refresh - the
+  // two only ever agree at the instant the animation starts. A moon has
+  // no independent spin of its own; it only moves because it's nested
+  // inside its PARENT's spin group, so a transit touching a moon has to
+  // freeze the parent, not the moon's own (nonexistent) animation.
+  bodies: computed('system.bodies.[]', 'system.ships.[]', 'selectedKey', 'animate', 'basePeriod', 'labelSize', function () {
     const center = this.get('system.center') || 0;
     const base = this.basePeriod;
     const selected = this.selectedKey;
     const labelSize = this.labelSize;
-    const paused = this.animate ? '' : 'animation-play-state:paused;';
+    const globallyPaused = !this.animate;
     const raw = this.get('system.bodies') || [];
 
     const moonsByParent = {};
+    const parentOf = {};
     raw.filter((b) => b.parent).forEach((m) => {
       (moonsByParent[m.parent] = moonsByParent[m.parent] || []).push(m);
+      parentOf[`${m.key}`] = `${m.parent}`;
+    });
+
+    const transitBodyKeys = new Set();
+    (this.get('system.ships') || []).filter((s) => s.in_transit).forEach((s) => {
+      [ s.location, s.destination ].forEach((key) => {
+        if (!key || /^ring:/.test(`${key}`)) {
+          return;
+        }
+        transitBodyKeys.add(parentOf[`${key}`] || `${key}`);
+      });
     });
 
     return raw.filter((b) => !b.parent).map((b) => {
@@ -128,6 +151,8 @@ export default Component.extend({
       // so the outer system doesn't look frozen.
       const period = Math.round(base * Math.pow(b.ring || 1, 0.75));
       const angle = b.angle || 0;
+      const paused = (globallyPaused || transitBodyKeys.has(`${b.key}`))
+        ? 'animation-play-state:paused;' : '';
 
       // Resting place along the +x axis. The static rotation below swings
       // it round to its real angle; the animation takes it from there.
