@@ -11,7 +11,7 @@ module AresMUSH
         return { error: t('space.not_crewing') } if !ship
         return { error: t('space.ship_destroyed_order') } if !ship.active?
 
-        result = Systems.set_course(ship, request.args[:destination])
+        result = Systems.set_course(ship, Space.arg(request, :destination))
         return { error: result[:error] } if result[:error]
 
         { message: result[:message] }

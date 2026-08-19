@@ -7,8 +7,8 @@ module AresMUSH
         return error if error
 
         enactor = request.enactor
-        ship = SpaceShip[request.args[:id]]
-        return { error: t('space.ship_not_found', name: request.args[:id]) } if !ship
+        ship = SpaceShip[Space.arg(request, :id)]
+        return { error: t('space.ship_not_found', name: Space.arg(request, :id)) } if !ship
 
         own = Ships.ship_for_char(enactor)
         is_own = own && own.id.to_s == ship.id.to_s

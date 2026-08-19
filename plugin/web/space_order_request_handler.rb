@@ -14,13 +14,13 @@ module AresMUSH
         ship = Ships.ship_for_char(enactor)
         return { error: t('space.not_crewing') } if !ship
 
-        kind = "#{request.args[:kind]}".downcase
+        kind = "#{Space.arg(request, :kind)}".downcase
         result = Orders.issue(ship, kind,
-          heading: request.args[:heading],
-          speed: request.args[:speed],
-          target: request.args[:target],
-          hardpoint: request.args[:hardpoint],
-          section: request.args[:section])
+          heading: Space.arg(request, :heading),
+          speed: Space.arg(request, :speed),
+          target: Space.arg(request, :target),
+          hardpoint: Space.arg(request, :hardpoint),
+          section: Space.arg(request, :section))
 
         return { error: result[:error] } if result[:error]
 
