@@ -111,6 +111,14 @@ en:
     round_resolved: "Round %{round} resolved."
     resolving_without_orders: "Resolving without orders from: %{ships}"
 
+    # Ship location (web roster + detail page)
+    location_in_transit: "Under way to %{destination}, ETA %{eta}"
+    location_in_combat: "Engaged in %{sector}"
+    location_in_sector: "In %{sector}"
+    location_at_body: "At %{body}"
+    location_at_ring: "Holding at ring %{ring}"
+    location_unplaced: "No fixed position"
+
     # Sectors, ships and admin
     sectors_header: "Sectors:"
     no_sectors: "No sectors have been created yet."

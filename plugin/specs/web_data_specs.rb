@@ -56,6 +56,84 @@ module AresMUSH
           expect(orders[:helm]["action"]).to eq "move"
           expect(orders[:fire].first[:weapon]).to eq "Light Cannon"
         end
+
+        it "reports the sector it's in and whether that sector has an active engagement" do
+          talon = spawn("Talon One", "Talon", x: 4, y: 5)
+          data = WebData.ship_detail(talon)
+          expect(data[:sector_id]).to eq sector.id
+          expect(data[:sector_name]).to eq "Concord Graveyard"
+          expect(data[:in_combat]).to be false
+
+          SpaceCombat.create(sector: sector, round: 0, state: "active", log: [])
+          expect(WebData.ship_detail(talon)[:in_combat]).to be true
+        end
+      end
+
+      describe :location_description do
+        it "describes a ship in a quiet sector" do
+          talon = spawn("Talon One", "Talon", x: 4, y: 5)
+          expect(WebData.location_description(talon)).to include "Concord Graveyard"
+        end
+
+        it "describes a ship in an active engagement" do
+          talon = spawn("Talon One", "Talon", x: 4, y: 5)
+          SpaceCombat.create(sector: sector, round: 0, state: "active", log: [])
+          expect(WebData.location_description(talon)).to include "Concord Graveyard"
+        end
+
+        it "describes a ship stationed at a system body, with no sector at all" do
+          ship = TestShip.new(id: 99, name: "Freedom", ship_class: "Talon",
+                              system_key: "covenant_reach", location_key: "p1")
+          expect(WebData.location_description(ship)).to include "P1"
+        end
+
+        it "describes a ship holding at a bare ring" do
+          ship = TestShip.new(id: 99, name: "Freedom", ship_class: "Talon",
+                              system_key: "covenant_reach", system_ring: 5)
+          expect(WebData.location_description(ship)).to include "5"
+        end
+
+        it "describes a ship under way" do
+          ship = TestShip.new(id: 99, name: "Freedom", ship_class: "Talon",
+                              system_key: "covenant_reach", location_key: "p1")
+          Systems.set_course(ship, "p4")
+          expect(WebData.location_description(ship)).to include "P4"
+        end
+
+        it "flags a ship with no sector and no system placement as unplaced" do
+          ship = TestShip.new(id: 99, name: "Orphan", ship_class: "Talon")
+          expect(WebData.location_description(ship)).to eq t('space.location_unplaced')
+        end
+      end
+
+      describe :ships_list do
+        it "gives staff the whole roster regardless of who they crew" do
+          spawn("Talon One", "Talon", x: 4, y: 5)
+          spawn("Talon Two", "Talon", x: 6, y: 5)
+
+          names = WebData.ships_list(nil, true).map { |s| s[:name] }
+          expect(names).to eq [ "Talon One", "Talon Two" ]
+        end
+
+        it "gives a player only the ships they hold a station on, however many" do
+          talon = spawn("Talon One", "Talon", x: 4, y: 5)
+          other = spawn("Talon Two", "Talon", x: 6, y: 5)
+          char = TestCharacter.new(1, "Alex")
+          Crew.assign(talon, "pilot", Crew.char_key(char))
+
+          names = WebData.ships_list(char, false).map { |s| s[:name] }
+          expect(names).to eq [ "Talon One" ]
+
+          Crew.assign(other, "pilot", Crew.char_key(char))
+          names = WebData.ships_list(char, false).map { |s| s[:name] }
+          expect(names).to eq [ "Talon One", "Talon Two" ]
+        end
+
+        it "gives a non-staff non-crewing viewer nothing" do
+          spawn("Talon One", "Talon", x: 4, y: 5)
+          char = TestCharacter.new(1, "Alex")
+          expect(WebData.ships_list(char, false)).to eq []
+        end
       end
 
       describe :tactical do

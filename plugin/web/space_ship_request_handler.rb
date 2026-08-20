@@ -1,6 +1,9 @@
 module AresMUSH
   module Space
-    # Full detail for one ship. Only your own ship, or anything if staff.
+    # Full detail for one ship. Any ship you hold a station on, or
+    # anything if staff - the same rule WebData.ships_list uses to
+    # build the roster this is reached from, so a ship the roster
+    # legitimately shows you can't then be refused here.
     class SpaceShipRequestHandler
       def handle(request)
         error = Website.check_login(request)
@@ -10,9 +13,8 @@ module AresMUSH
         ship = SpaceShip[Space.arg(request, :id)]
         return { error: t('space.ship_not_found', name: Space.arg(request, :id)) } if !ship
 
-        own = Ships.ship_for_char(enactor)
-        is_own = own && own.id.to_s == ship.id.to_s
-        return { error: t('space.not_your_ship') } if !is_own && !enactor.is_admin?
+        crews_it = !Ships.station_for_char(ship, enactor).nil?
+        return { error: t('space.not_your_ship') } if !crews_it && !enactor.is_admin?
 
         WebData.ship_detail(ship)
       end
