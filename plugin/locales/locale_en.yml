@@ -126,6 +126,7 @@ en:
     in_combat: "ENGAGED (round %{round})"
     quiet: "quiet"
     ship_spawned: "%{name} (%{ship_class}) spawned in %{sector} at %{x},%{y}."
+    spawn_placement_failed: "(not placed in the system: %{reason})"
     ship_placed: "%{name} is now at %{x},%{y} heading %{facing}."
     ship_removed: "%{name} has been removed."
     station_assigned: "%{name} is now at %{station} aboard %{ship}."
