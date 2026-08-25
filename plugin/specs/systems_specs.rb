@@ -163,6 +163,73 @@ module AresMUSH
         end
       end
 
+      describe :place do
+        it "places at a body in the default system with a single argument" do
+          ship = spawn("Talon One")
+
+          result = Systems.place(ship, "p1", nil)
+
+          expect(result[:ok]).to be true
+          expect(ship.system_key).to eq system_key
+          expect(ship.location_key).to eq "p1"
+          expect(ship.system_ring).to be_nil
+        end
+
+        it "places at a body in a named system with two arguments" do
+          ship = spawn("Talon One")
+
+          result = Systems.place(ship, "covenant_reach", "p2")
+
+          expect(result[:ok]).to be true
+          expect(ship.location_key).to eq "p2"
+        end
+
+        it "places at a bare ring, clearing any body" do
+          ship = spawn("Talon One")
+          ship.location_key = "p1"
+
+          result = Systems.place(ship, "5", nil)
+
+          expect(result[:ok]).to be true
+          expect(ship.system_ring).to eq 5
+          expect(ship.location_key).to be_nil
+        end
+
+        it "refuses an unknown system" do
+          ship = spawn("Talon One")
+          result = Systems.place(ship, "Nowhere", "p1")
+          expect(result[:ok]).to be false
+        end
+
+        it "refuses an unknown body" do
+          ship = spawn("Talon One")
+          result = Systems.place(ship, "Nowhere At All", nil)
+          expect(result[:ok]).to be false
+        end
+
+        it "clears any in-progress travel, since this is an authoritative override" do
+          ship = spawn("Talon One")
+          ship.location_key = "p1"
+          Systems.set_course(ship, "p2")
+          expect(ship.in_transit?).to be true
+
+          Systems.place(ship, "p3", nil)
+
+          expect(ship.in_transit?).to be false
+          expect(ship.location_key).to eq "p3"
+        end
+
+        it "clears a hangar reference, since a direct placement is an independent position" do
+          ship = spawn("Talon One")
+          carrier = spawn("Covenant", "Covenant")
+          ship.carrier = carrier
+
+          Systems.place(ship, "p1", nil)
+
+          expect(ship.carrier).to be_nil
+        end
+      end
+
       describe :settle_arrival do
         it "does nothing for a ship not travelling" do
           ship = spawn("Talon One")

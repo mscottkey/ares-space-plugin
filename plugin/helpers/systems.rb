@@ -290,6 +290,55 @@ module AresMUSH
           eta: Astro.format_duration(seconds)))
       end
 
+      # Places a ship at a body, or at a bare ring, without any travel
+      # time - for setup, or when a GM needs to move something
+      # directly (space/station, and space/spawn's optional trailing
+      # placement). A single arg means a body in the default system;
+      # two means <system>/<body>, mirroring space/station's own
+      # command shape so a GM only has to learn the convention once.
+      #
+      # Direct placement is authoritative: it always leaves the ship
+      # with an independent position, even if it was hangared (or,
+      # worst case, self-hangared - see Docking.land) beforehand.
+      # Clearing carrier is what stops Docking.dock below from routing
+      # through the old hangar instead of the system_key/location_key/
+      # system_ring just set. Returns { ok:, message:, error: }.
+      def self.place(ship, system_arg, body_arg)
+        if body_arg.to_s.empty?
+          key = default_system_key
+          wanted_body = system_arg
+        else
+          key = find_system_key(system_arg)
+          wanted_body = body_arg
+        end
+        return failure(t('space.no_such_system', name: system_arg)) if !key
+
+        ring = parse_ring(wanted_body)
+        if ring
+          ship.update(system_key: "#{key}", location_key: nil,
+                      system_ring: ring, system_angle: ring_angle_for(ship),
+                      destination_key: nil, departed_at: nil, travel_seconds: 0,
+                      carrier: nil)
+          Docking.dock(ship)
+
+          return success(t('space.ship_stationed_ring',
+            name: ship.name, ring: ring, system: system(key)["name"]))
+        end
+
+        body_data = body(key, wanted_body)
+        return failure(t('space.no_such_body', name: wanted_body)) if !body_data
+
+        ship.update(system_key: "#{key}", location_key: body_data["key"],
+                    system_ring: nil, system_angle: nil,
+                    destination_key: nil, departed_at: nil, travel_seconds: 0,
+                    carrier: nil)
+        Docking.dock(ship)
+
+        success(t('space.ship_stationed',
+          name: ship.name, body: body_data["name"] || body_data["key"],
+          system: system(key)["name"]))
+      end
+
       def self.current_ring(ship)
         return ship.system_ring.to_i if ship.system_ring
         data = body(ship.system_key, ship.location_key)
